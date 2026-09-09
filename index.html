@@ -7,7 +7,7 @@
 <title>家計簿</title>
 <meta name="theme-color" content="#ffffff"/>
 <link rel="manifest" href="manifest.json"/>
-<link href="style.css?v=48" rel="stylesheet"/>
+<link href="style.css?v=47.1" rel="stylesheet"/>
 </head>
 <body>
 <main class="container">
@@ -27,14 +27,14 @@
 <div class="section-title"><h2>支出ペース・使いすぎ予報</h2><button class="minus-btn" data-section="progress">−</button></div>
 <div class="progress-wrap">
 <div class="progress-label"><span>今月の支出</span><strong id="budgetProgressText">¥0 / ¥0</strong></div>
-<div class="progress-meter-caption"><span id="budgetProgressPercent">予算0%</span></div>
+<div class="progress-meter-caption"><span id="budgetProgressPercent">予算0.00%</span></div>
 <div class="progress"><div id="budgetProgressBar"></div><span id="progressTodayMarker" class="progress-today-marker" aria-label="現在の日付"></span></div>
 <div class="progress-timeline" id="progressTimelineTrack"><div class="progress-timeline-line"></div><div class="progress-timeline-labels" id="progressTimelineLabels"><span>1日</span><span>10日</span><span>20日</span><span>月末</span></div></div>
 <div class="progress-sub"><span id="budgetStatus">データを入力すると表示されます</span></div>
 <div class="pace-summary"><span>残り予算 <strong id="paceRemainingBudget">¥0</strong></span><span>1日あたり <strong id="paceDailyBudget">¥0</strong> <small id="paceRemainingDays">（残り0日）</small></span></div>
 </div>
 <div class="forecast-box">
-<div class="forecast-label">このペースで使った場合の月末予想</div>
+<div class="forecast-label">このペースで使った場合の月末の支出予想</div>
 <strong id="forecastAmount">¥0</strong>
 <div class="forecast-status" id="forecastStatus">データを入力すると表示されます</div>
 </div>
@@ -252,10 +252,10 @@
 <div id="memoPopup" class="memo-popup hidden" role="status"></div>
 <div id="inputValidation" class="validation-warning hidden"></div>
 <footer class="app-footer">
-<h1>家計簿 <span class="app-version">ver.48</span></h1>
+<h1>家計簿 <span class="app-version">ver.47.1</span></h1>
 <p>収入・固定費・貯金を先に整理して、今月使える金額を自動計算。</p>
 </footer></main>
-<script src="app.js?v=48"></script>
+<script src="app.js?v=47.1"></script>
 <script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));}</script>
 </body>
 </html>
