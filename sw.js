@@ -1,5 +1,5 @@
-const CACHE_NAME = "money-rule-app-v47.1";
-const APP_SHELL = ["./", "./index.html", "./style.css?v=47.1", "./app.js?v=47.1", "./manifest.json"];
+const CACHE_NAME = "money-rule-app-v47.2";
+const APP_SHELL = ["./", "./index.html", "./style.css?v=47.2", "./app.js?v=47.2", "./manifest.json"];
 
 self.addEventListener("install", event => {
   event.waitUntil(
