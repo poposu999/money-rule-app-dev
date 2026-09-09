@@ -219,7 +219,7 @@ button{margin-top:14px;border:0;border-radius:9px;padding:11px 16px;font-size:15
 .chart-card{border:1px solid #e5e7eb;background:#fff;border-radius:14px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.04);overflow:hidden}
 @media(max-width:600px){
  input[type="date"],#fixedDay{width:100%;max-width:100%;min-width:0;box-sizing:border-box}
- #expenseDate,#plannedDate,#plannedEditDate,#editDate{display:block;min-width:0;width:100%;max-width:100%;box-sizing:border-box;-webkit-appearance:none;appearance:none}
+ #expenseDate,#plannedDate,#plannedEditDate,#editDate{display:block;min-width:0;width:100%;max-width:100%;box-sizing:border-box;-webkit-appearance:none;appearance:none;color:#222;-webkit-text-fill-color:#222}
  .planned-expense-table,.fixed-expense-table{min-width:520px}
  .planned-expense-table th,.planned-expense-table td,.fixed-expense-table th,.fixed-expense-table td{font-size:11px;padding:4px 5px}
  .planned-expense-table th:nth-child(2),.planned-expense-table td:nth-child(2),.fixed-expense-table th:nth-child(2),.fixed-expense-table td:nth-child(2){width:31%;min-width:90px}
