@@ -199,3 +199,29 @@ button{margin-top:14px;border:0;border-radius:9px;padding:11px 16px;font-size:15
 .forecast-box strong{font-size:20px;margin-top:3px}
 .forecast-status{margin-top:6px;font-size:12px}
 @media(max-width:600px){.pace-summary{font-size:11px;padding:6px 8px}.pace-summary strong{font-size:13px}.pace-summary small{font-size:10px}.forecast-box{padding:10px 11px}}
+
+/* ver.48 */
+.progress{position:relative}
+.progress-today-marker{position:absolute;top:50%;width:10px;height:10px;border-radius:50%;background:#fff;border:2px solid #202124;box-shadow:0 0 0 1px rgba(255,255,255,.8);transform:translate(-50%,-50%);z-index:2;pointer-events:none}
+.progress-timeline{position:relative;height:28px;margin-top:4px}
+.progress-timeline-line{display:none}
+.progress-timeline-labels{position:relative;height:22px;font-size:10px;color:#6b7280}
+.progress-timeline-label{position:absolute;top:0;transform:translateX(-50%);white-space:nowrap}
+.progress-timeline-label:first-child{transform:none}
+.progress-timeline-label:last-child{transform:translateX(-100%)}
+.memo-cell{cursor:pointer;position:relative}
+.memo-popup{position:fixed;z-index:200;max-width:320px;padding:9px 11px;background:#202124;color:#fff;border-radius:8px;font-size:12px;line-height:1.45;box-shadow:0 5px 18px rgba(0,0,0,.2);overflow-wrap:anywhere}
+.memo-popup.hidden{display:none!important}
+.expense-table .confirm-btn,.expense-table .fixed-paid,.expense-table .edit-btn,.expense-table .delete-btn{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;width:40px;height:24px;min-height:24px;margin:0 0 0 5px;padding:2px 4px;font-size:9px;line-height:1;border-radius:6px;white-space:nowrap}
+.expense-table .confirm-btn,.expense-table .fixed-paid{border:1px solid #c7cbd1;background:#f3f4f6;color:#222}
+.expense-table .confirm-btn:hover,.expense-table .fixed-paid:hover{background:#e8eaed}
+.chart-card{border:1px solid #e5e7eb;background:#fff;border-radius:14px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.04)}
+@media(max-width:600px){
+ input[type="date"]{width:100%;max-width:100%;min-width:0;padding-left:10px;padding-right:4px}
+ .planned-expense-table,.fixed-expense-table{min-width:500px}
+ .planned-expense-table th,.planned-expense-table td,.fixed-expense-table th,.fixed-expense-table td{font-size:11px;padding:4px 5px}
+ .planned-expense-table th:nth-child(2),.planned-expense-table td:nth-child(2),.fixed-expense-table th:nth-child(2),.fixed-expense-table td:nth-child(2){width:31%;min-width:90px}
+ .planned-expense-table th:nth-child(3),.planned-expense-table td:nth-child(3),.fixed-expense-table th:nth-child(3),.fixed-expense-table td:nth-child(3){min-width:72px}
+ .expense-table .confirm-btn,.expense-table .fixed-paid,.expense-table .edit-btn,.expense-table .delete-btn{width:40px;height:24px;min-height:24px;font-size:9px;padding:2px 3px;margin-left:3px}
+ .expense-table .action-col{min-width:0}
+}
