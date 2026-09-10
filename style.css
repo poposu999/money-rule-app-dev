@@ -239,3 +239,18 @@ button{margin-top:14px;border:0;border-radius:9px;padding:11px 16px;font-size:15
   .planned-expense-table .amount-col,.fixed-expense-table .amount-col{text-align:right}
   .planned-expense-table .action-col,.fixed-expense-table .action-col{white-space:normal;text-align:right}
 }
+
+
+/* ver.47.5: 今月の支出・固定費一覧のメモ欄を拡大し、右側の列を整理 */
+.expense-table th:nth-child(2),.expense-table td:nth-child(2){width:42%;}
+.expense-table th:nth-child(3),.expense-table td:nth-child(3){width:14%;}
+.expense-table th:nth-child(4),.expense-table td:nth-child(4){width:17%;}
+.expense-table th:nth-child(5),.expense-table td:nth-child(5){width:27%;}
+@media(max-width:600px){
+  .expense-table th:nth-child(1),.expense-table td:nth-child(1){width:48px;}
+  .expense-table th:nth-child(2),.expense-table td:nth-child(2){width:34%;}
+  .expense-table th:nth-child(3),.expense-table td:nth-child(3){width:15%;}
+  .expense-table th:nth-child(4),.expense-table td:nth-child(4){width:18%;}
+  .expense-table th:nth-child(5),.expense-table td:nth-child(5){width:25%;}
+  .expense-table td:nth-child(2){white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+}
