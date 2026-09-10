@@ -265,11 +265,12 @@ button{margin-top:14px;border:0;border-radius:9px;padding:11px 16px;font-size:15
 .expense-table th:nth-child(4),.expense-table td:nth-child(4){width:16%;}
 .expense-table th:nth-child(5),.expense-table td:nth-child(5){width:20%;}
 @media(max-width:600px){
-  .expense-table{min-width:500px;table-layout:fixed;}
+  .expense-table{width:100%;min-width:0;table-layout:fixed;}
   .expense-table th,.expense-table td{padding-top:3px;padding-bottom:3px;line-height:1.15;}
-  .expense-table th:nth-child(1),.expense-table td:nth-child(1){width:11%;}
-  .expense-table th:nth-child(2),.expense-table td:nth-child(2){width:39%;}
+  .expense-table th:nth-child(1),.expense-table td:nth-child(1){width:8%;}
+  .expense-table th:nth-child(2),.expense-table td:nth-child(2){width:33%;}
   .expense-table th:nth-child(3),.expense-table td:nth-child(3){width:14%;}
-  .expense-table th:nth-child(4),.expense-table td:nth-child(4){width:16%;}
-  .expense-table th:nth-child(5),.expense-table td:nth-child(5){width:20%;}
+  .expense-table th:nth-child(4),.expense-table td:nth-child(4){width:17%;}
+  .expense-table th:nth-child(5),.expense-table td:nth-child(5){width:28%;}
+  .expense-table td:nth-child(2){white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 }
