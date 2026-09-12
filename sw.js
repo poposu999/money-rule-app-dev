@@ -13,10 +13,10 @@ const TABLE_STYLE = `
  .expense-table th,.expense-table td{font-size:10px!important;padding:3px 2px!important;line-height:1.05!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}
  .expense-table th{font-size:10px!important;font-weight:600!important;background:#f8f8f8!important;color:#777!important}
  .expense-table th:nth-child(1),.expense-table td:nth-child(1){width:9%!important;min-width:0!important}
- .expense-table th:nth-child(2),.expense-table td:nth-child(2){width:30%!important;min-width:0!important}
+ .expense-table th:nth-child(2),.expense-table td:nth-child(2){width:37%!important;min-width:0!important}
  .expense-table th:nth-child(3),.expense-table td:nth-child(3){width:14%!important;min-width:0!important}
  .expense-table th:nth-child(4),.expense-table td:nth-child(4){width:18%!important;min-width:0!important}
- .expense-table th:nth-child(5),.expense-table td:nth-child(5){width:29%!important;min-width:0!important}
+ .expense-table th:nth-child(5),.expense-table td:nth-child(5){width:22%!important;min-width:0!important}
  .expense-table .amount-col{white-space:nowrap!important;text-align:right!important;padding-right:5px!important}
  .expense-table .amount-col strong{font-weight:400!important;white-space:nowrap!important}
  .expense-table .action-col{white-space:nowrap!important;text-align:right!important}
