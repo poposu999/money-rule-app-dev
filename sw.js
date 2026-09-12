@@ -1,5 +1,5 @@
-const CACHE_NAME = "money-rule-app-v47.19";
-const APP_SHELL = ["./", "./index.html", "./style.css?v=47.19", "./app.js?v=47.19", "./manifest.json"];
+const CACHE_NAME = "money-rule-app-v47.20";
+const APP_SHELL = ["./", "./index.html", "./style.css?v=47.20", "./app.js?v=47.20", "./manifest.json"];
 
 self.addEventListener("install", event => {
   event.waitUntil(
@@ -28,39 +28,42 @@ self.addEventListener("fetch", event => {
       if (path.endsWith("/index.html") || path.endsWith("/")) {
         const text = await response.text();
         const patched = text
-          .replaceAll("Ver.47.14", "Ver.47.19")
-          .replaceAll("ver.47.14", "ver.47.19")
-          .replaceAll("Ver.47.15", "Ver.47.19")
-          .replaceAll("ver.47.15", "ver.47.19")
-          .replaceAll("Ver.47.16", "Ver.47.19")
-          .replaceAll("ver.47.16", "ver.47.19")
-          .replaceAll("Ver.47.17", "Ver.47.19")
-          .replaceAll("ver.47.17", "ver.47.19")
-          .replaceAll("Ver.47.18", "Ver.47.19")
-          .replaceAll("ver.47.18", "ver.47.19")
-          .replaceAll("style.css?v=47.10", "style.css?v=47.19")
-          .replaceAll("style.css?v=47.15", "style.css?v=47.19")
-          .replaceAll("style.css?v=47.16", "style.css?v=47.19")
-          .replaceAll("style.css?v=47.17", "style.css?v=47.19")
-          .replaceAll("style.css?v=47.18", "style.css?v=47.19")
-          .replaceAll("app.js?v=47.14", "app.js?v=47.19")
-          .replaceAll("app.js?v=47.15", "app.js?v=47.19")
-          .replaceAll("app.js?v=47.16", "app.js?v=47.19")
-          .replaceAll("app.js?v=47.17", "app.js?v=47.19")
-          .replaceAll("app.js?v=47.18", "app.js?v=47.19");
+          .replaceAll("Ver.47.14", "Ver.47.20")
+          .replaceAll("ver.47.14", "ver.47.20")
+          .replaceAll("Ver.47.15", "Ver.47.20")
+          .replaceAll("ver.47.15", "ver.47.20")
+          .replaceAll("Ver.47.16", "Ver.47.20")
+          .replaceAll("ver.47.16", "ver.47.20")
+          .replaceAll("Ver.47.17", "Ver.47.20")
+          .replaceAll("ver.47.17", "ver.47.20")
+          .replaceAll("Ver.47.18", "Ver.47.20")
+          .replaceAll("ver.47.18", "ver.47.20")
+          .replaceAll("Ver.47.19", "Ver.47.20")
+          .replaceAll("ver.47.19", "ver.47.20")
+          .replaceAll("style.css?v=47.10", "style.css?v=47.20")
+          .replaceAll("style.css?v=47.15", "style.css?v=47.20")
+          .replaceAll("style.css?v=47.16", "style.css?v=47.20")
+          .replaceAll("style.css?v=47.17", "style.css?v=47.20")
+          .replaceAll("style.css?v=47.18", "style.css?v=47.20")
+          .replaceAll("style.css?v=47.19", "style.css?v=47.20")
+          .replaceAll("app.js?v=47.14", "app.js?v=47.20")
+          .replaceAll("app.js?v=47.15", "app.js?v=47.20")
+          .replaceAll("app.js?v=47.16", "app.js?v=47.20")
+          .replaceAll("app.js?v=47.17", "app.js?v=47.20")
+          .replaceAll("app.js?v=47.18", "app.js?v=47.20")
+          .replaceAll("app.js?v=47.19", "app.js?v=47.20");
         output = new Response(patched, {status: response.status, statusText: response.statusText, headers: response.headers});
       } else if (path.endsWith("/style.css")) {
         const text = await response.text();
         const fix = `
-/* ver.47.19: メモ・カテゴリの文字を省略せず全文表示 */
+/* ver.47.20: カテゴリ文字をさらに右へ移動。列幅・セル幅は変更しない */
 @media(max-width:600px){
-  .expense-table td:nth-child(2),.expense-table td:nth-child(3){
-    white-space:normal!important;
-    overflow:visible!important;
-    text-overflow:clip!important;
-    overflow-wrap:anywhere!important;
-    word-break:break-word!important;
-    line-height:1.25!important;
+  .expense-table th:nth-child(3),.expense-table td:nth-child(3){
+    position:static!important;
+    left:auto!important;
+    transform:none!important;
+    padding-left:2px!important;
+    text-indent:40px!important;
   }
 }
 `;
