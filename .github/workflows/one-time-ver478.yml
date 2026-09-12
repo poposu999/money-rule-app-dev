@@ -1,0 +1,51 @@
+name: One-time ver.47.8 footer fix
+
+on:
+  push:
+    branches:
+      - update
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout develop
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+
+      - name: Update version display
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          s2 = re.sub(r'家計簿 ver\\.\\d+(?:\\.\\d+)?', '家計簿 ver.47.8', s)
+          s2 = s2.replace('style.css?v=47.7', 'style.css?v=47.8')
+          if s2 == s:
+              print('No version text/cache query change found')
+          p.write_text(s2, encoding='utf-8')
+          PY
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Update app version to ver.47.8" || echo "No changes to commit"
+          git push origin develop
+
+      - name: Remove one-time workflow
+        if: always()
+        run: |
+          git checkout update
+          git rm .github/workflows/one-time-ver478.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Remove one-time version workflow" || echo "Already removed"
+          git push origin update
