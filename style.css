@@ -241,47 +241,22 @@ button{margin-top:14px;border:0;border-radius:9px;padding:11px 16px;font-size:15
 }
 
 
-/* ver.47.5: 今月の支出・固定費一覧のメモ欄を拡大し、右側の列を整理 */
-.expense-table th:nth-child(2),.expense-table td:nth-child(2){width:42%;}
-.expense-table th:nth-child(3),.expense-table td:nth-child(3){width:14%;}
-.expense-table th:nth-child(4),.expense-table td:nth-child(4){width:17%;}
-.expense-table th:nth-child(5),.expense-table td:nth-child(5){width:27%;}
+/* ver.47.12: 支出テーブルの列幅・揃えを整理 */
+.expense-table{width:100%;table-layout:fixed}
+.expense-table th,.expense-table td{box-sizing:border-box;padding-top:3px;padding-bottom:3px;line-height:1.15}
+.expense-table th:nth-child(1),.expense-table td:nth-child(1){width:8%;text-align:left}
+.expense-table th:nth-child(2),.expense-table td:nth-child(2){width:38%;text-align:left}
+.expense-table th:nth-child(3),.expense-table td:nth-child(3){width:12%;text-align:right;white-space:nowrap}
+.expense-table th:nth-child(4),.expense-table td:nth-child(4){width:18%;text-align:right;white-space:nowrap}
+.expense-table th:nth-child(5),.expense-table td:nth-child(5){width:24%;text-align:right}
+.expense-table td:nth-child(2){white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @media(max-width:600px){
-  .expense-table th:nth-child(1),.expense-table td:nth-child(1){width:48px;}
-  .expense-table th:nth-child(2),.expense-table td:nth-child(2){width:34%;}
-  .expense-table th:nth-child(3),.expense-table td:nth-child(3){width:15%;}
-  .expense-table th:nth-child(4),.expense-table td:nth-child(4){width:18%;}
-  .expense-table th:nth-child(5),.expense-table td:nth-child(5){width:25%;}
-  .expense-table td:nth-child(2){white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-}
-
-
-/* ver.47.6: 行の高さを維持しつつメモ欄を広めに確保 */
-.expense-table{table-layout:fixed;}
-.expense-table th,.expense-table td{padding-top:3px;padding-bottom:3px;line-height:1.15;}
-.expense-table th:nth-child(1),.expense-table td:nth-child(1){width:8%;}
-.expense-table th:nth-child(2),.expense-table td:nth-child(2){width:42%;}
-.expense-table th:nth-child(3),.expense-table td:nth-child(3){width:14%;}
-.expense-table th:nth-child(4),.expense-table td:nth-child(4){width:16%;}
-.expense-table th:nth-child(5),.expense-table td:nth-child(5){width:20%;}
-@media(max-width:600px){
-  .expense-table{width:100%;min-width:0;table-layout:fixed;}
-  .expense-table th,.expense-table td{padding-top:3px;padding-bottom:3px;line-height:1.15;}
-  .expense-table th:nth-child(1),.expense-table td:nth-child(1){width:8%;}
-  .expense-table th:nth-child(2),.expense-table td:nth-child(2){width:33%;}
-  .expense-table th:nth-child(3),.expense-table td:nth-child(3){width:14%;}
-  .expense-table th:nth-child(4),.expense-table td:nth-child(4){width:17%;}
-  .expense-table th:nth-child(5),.expense-table td:nth-child(5){width:28%;}
-  .expense-table td:nth-child(2){white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-}
-
-
-/* ver.47.11: モバイル支出テーブルの列バランス調整 */
-@media(max-width:600px){
-  .expense-table th:nth-child(1),.expense-table td:nth-child(1){width:8%;}
-  .expense-table th:nth-child(2),.expense-table td:nth-child(2){width:35%;}
-  .expense-table th:nth-child(3),.expense-table td:nth-child(3){width:12%;}
-  .expense-table th:nth-child(4),.expense-table td:nth-child(4){width:19%;}
-  .expense-table th:nth-child(5),.expense-table td:nth-child(5){width:26%;}
-  .expense-table td:nth-child(2){white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+ .expense-table{width:100%;min-width:0;table-layout:fixed}
+ .expense-table th,.expense-table td{padding:3px 2px;line-height:1.15}
+ .expense-table th:nth-child(1),.expense-table td:nth-child(1){width:9%;text-align:left}
+ .expense-table th:nth-child(2),.expense-table td:nth-child(2){width:37%;text-align:left}
+ .expense-table th:nth-child(3),.expense-table td:nth-child(3){width:12%;text-align:right}
+ .expense-table th:nth-child(4),.expense-table td:nth-child(4){width:18%;text-align:right}
+ .expense-table th:nth-child(5),.expense-table td:nth-child(5){width:24%;text-align:right}
+ .expense-table td:nth-child(2){white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 }
