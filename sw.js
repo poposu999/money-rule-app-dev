@@ -1,5 +1,5 @@
-const CACHE_NAME = "money-rule-app-v47.27";
-const APP_SHELL = ["./", "./index.html", "./style.css?v=47.27", "./app.js?v=47.27", "./manifest.json"];
+const CACHE_NAME = "money-rule-app-v47.29";
+const APP_SHELL = ["./", "./index.html", "./style.css?v=47.29", "./app.js?v=47.29", "./manifest.json"];
 self.addEventListener("install", event => { event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", event => { event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key)))).then(() => self.clients.claim())); });
 self.addEventListener("fetch", event => {
@@ -12,8 +12,8 @@ self.addEventListener("fetch", event => {
     let output = response;
     if (path.endsWith("/index.html") || path.endsWith("/")) {
       const text = await response.text();
-      let patched = text.replace(/Ver\.47\.\d+/g, "Ver.47.27").replace(/ver\.47\.\d+/g, "ver.47.27")
-        .replace(/style\.css\?v=47\.\d+/g, "style.css?v=47.27").replace(/app\.js\?v=47\.\d+/g, "app.js?v=47.27");
+      let patched = text.replace(/Ver\.47\.\d+/g, "Ver.47.29").replace(/ver\.47\.\d+/g, "ver.47.29")
+        .replace(/style\.css\?v=47\.\d+/g, "style.css?v=47.29").replace(/app\.js\?v=47\.\d+/g, "app.js?v=47.29");
       patched = patched.replace("</body>", `<script>
 document.addEventListener("DOMContentLoaded",function(){
   function adjustCategory(){
@@ -33,9 +33,9 @@ document.addEventListener("DOMContentLoaded",function(){
       const fix = `
 @media(max-width:600px){
   .expense-table th:nth-child(3),.expense-table td:nth-child(3){
-    width:70px!important;min-width:70px!important;
+    width:78px!important;min-width:78px!important;max-width:78px!important;
     overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;
-    text-indent:40px!important;
+    text-indent:0!important;
   }
   .expense-table td:nth-child(3).category-tight,.expense-table th:nth-child(3).category-tight{
     text-indent:15px!important;
