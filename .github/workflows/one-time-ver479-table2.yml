@@ -1,0 +1,70 @@
+name: ver.47.9 table layout update
+
+on:
+  push:
+    branches:
+      - develop
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+
+      - name: Apply changes
+        run: |
+          if git log -1 --pretty=%s | grep -Fxq "Apply ver.47.9 table layout update"; then
+            exit 0
+          fi
+
+          cat >> style.css <<'EOF'
+
+/* ver.47.9: スマホの支出テーブルを横スクロールなしで最適化 */
+@media(max-width:600px){
+  .expense-table-wrap{overflow-x:hidden!important}
+  .expense-table{width:100%!important;min-width:0!important;table-layout:fixed!important;font-size:10.5px!important}
+  .expense-table th,.expense-table td{padding:3px 2px!important;line-height:1.05!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}
+  .expense-table th:nth-child(1),.expense-table td:nth-child(1){width:13%!important;min-width:0!important}
+  .expense-table th:nth-child(2),.expense-table td:nth-child(2){width:24%!important;min-width:0!important}
+  .expense-table th:nth-child(3),.expense-table td:nth-child(3){width:15%!important;min-width:0!important}
+  .expense-table th:nth-child(4),.expense-table td:nth-child(4){width:23%!important;min-width:82px!important}
+  .expense-table th:nth-child(5),.expense-table td:nth-child(5){width:25%!important;min-width:0!important}
+  .expense-table .amount-col{white-space:nowrap!important;text-align:right!important}
+  .expense-table .amount-col strong{font-weight:400!important;white-space:nowrap!important}
+  .expense-table .action-col{white-space:nowrap!important;text-align:right!important}
+  .expense-table .action-col .edit-delete-buttons{display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:2px!important;flex-wrap:nowrap!important;white-space:nowrap!important}
+  .expense-table .action-col button{margin:0!important;padding:2px 3px!important;font-size:8px!important;line-height:1.05!important;min-width:0!important;white-space:nowrap!important}
+}
+EOF
+
+          sed -i -E 's/家計簿 ver\.[0-9]+(\.[0-9]+)?/家計簿 ver.47.9/g' index.html
+          sed -i 's/style.css?v=47.8/style.css?v=47.9/g' index.html
+
+          cat > README.md <<'EOF'
+# 家計簿アプリ
+
+## ver.47.9
+- スマホの支出テーブルを横スクロールなしで画面幅内に収まるよう調整
+- 日付・メモ・カテゴリ・金額・操作欄の幅を全体のバランスを見て再調整
+- 金額列を確保し、金額を太字から通常表示に変更
+- 「支出に確定」「編集」「削除」の操作ボタンを横一列に配置
+- テーブルの行間・ボタン余白を詰め、一覧性を改善
+EOF
+
+          rm -f .github/workflows/one-time-ver479-table.yml
+          rm -f .github/workflows/one-time-ver479-table2.yml
+
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add style.css index.html README.md .github/workflows
+          git commit -m "Apply ver.47.9 table layout update"
+          git push origin develop
