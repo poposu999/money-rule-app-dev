@@ -272,3 +272,9 @@ button{margin-top:14px;border:0;border-radius:9px;padding:11px 16px;font-size:15
  .expense-table th:nth-child(4),.expense-table td:nth-child(4){width:18%;}
  .expense-table th:nth-child(5),.expense-table td:nth-child(5){width:24%;}
 }
+
+
+/* ver.47.14: カテゴリ列のセル内左揃え */
+@media(max-width:600px){
+ .expense-table th:nth-child(3),.expense-table td:nth-child(3){text-align:left;}
+}
