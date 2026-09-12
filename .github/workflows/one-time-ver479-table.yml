@@ -20,19 +20,12 @@ jobs:
 
       - name: Apply ver.47.9 updates
         run: |
-          if [ "${GITHUB_EVENT_NAME}" = "push" ] && git log -1 --pretty=%s | grep -Fxq "Apply ver.47.9 table layout update"; then
+          if git log -1 --pretty=%s | grep -Fxq "Apply ver.47.9 table layout update"; then
             echo "Update already applied. Nothing to do."
             exit 0
           fi
 
-          python - <<'PY'
-          from pathlib import Path
-          import re
-
-          style = Path('style.css')
-          style_text = style.read_text(encoding='utf-8')
-          if 'ver.47.9: スマホの支出テーブルを横スクロールなしで最適化' not in style_text:
-              style_text += r'''
+          cat >> style.css <<'EOF'
 
 /* ver.47.9: スマホの支出テーブルを横スクロールなしで最適化 */
 @media(max-width:600px){
@@ -50,19 +43,23 @@ jobs:
   .expense-table .action-col .edit-delete-buttons{display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:2px!important;flex-wrap:nowrap!important;white-space:nowrap!important}
   .expense-table .action-col button{margin:0!important;padding:2px 3px!important;font-size:8px!important;line-height:1.05!important;min-width:0!important;white-space:nowrap!important}
 }
-'''
-              style.write_text(style_text, encoding='utf-8')
+EOF
 
-          index = Path('index.html')
-          index_text = index.read_text(encoding='utf-8')
-          index_text = re.sub(r'家計簿 ver\.\d+(?:\.\d+)?', '家計簿 ver.47.9', index_text)
-          index_text = index_text.replace('style.css?v=47.8', 'style.css?v=47.9')
-          index.write_text(index_text, encoding='utf-8')
+          sed -i -E 's/家計簿 ver\.[0-9]+(\.[0-9]+)?/家計簿 ver.47.9/g' index.html
+          sed -i 's/style.css?v=47.8/style.css?v=47.9/g' index.html
 
-          Path('README.md').write_text('''# 家計簿アプリ\n\n## ver.47.9\n- スマホの支出テーブルを横スクロールなしで画面幅内に収まるよう調整\n- 日付・メモ・カテゴリ・金額・操作欄の幅を全体のバランスを見て再調整\n- 金額列を確保し、金額を太字から通常表示に変更\n- 「支出に確定」「編集」「削除」の操作ボタンを横一列に配置\n- テーブルの行間・ボタン余白を詰め、一覧性を改善\n''', encoding='utf-8')
+          cat > README.md <<'EOF'
+# 家計簿アプリ
 
-          Path('.github/workflows/one-time-ver479-table.yml').unlink()
-          PY
+## ver.47.9
+- スマホの支出テーブルを横スクロールなしで画面幅内に収まるよう調整
+- 日付・メモ・カテゴリ・金額・操作欄の幅を全体のバランスを見て再調整
+- 金額列を確保し、金額を太字から通常表示に変更
+- 「支出に確定」「編集」「削除」の操作ボタンを横一列に配置
+- テーブルの行間・ボタン余白を詰め、一覧性を改善
+EOF
+
+          rm .github/workflows/one-time-ver479-table.yml
 
       - name: Commit and push
         run: |
