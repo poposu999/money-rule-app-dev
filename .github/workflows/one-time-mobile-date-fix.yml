@@ -17,14 +17,7 @@ jobs:
           ref: develop
           fetch-depth: 0
       - name: Fix mobile date cells
-        run: |
-          if ! grep -q 'ver.47.8: mobile date cells' style.css; then
-            cat >> style.css <<'EOF'
-
-/* ver.47.8: mobile date cells must always show MM/DD */
-@media(max-width:600px){.expense-table th:nth-child(1),.expense-table td:nth-child(1){width:58px!important;min-width:58px!important;max-width:58px!important;white-space:nowrap!important;overflow:visible!important;text-overflow:clip!important}}
-EOF
-          fi
+        run: python -c "from pathlib import Path; p=Path('style.css'); s=p.read_text(); marker='ver.47.8: mobile date cells'; rule='\n/* ver.47.8: mobile date cells must always show MM/DD */\n@media(max-width:600px){.expense-table th:nth-child(1),.expense-table td:nth-child(1){width:58px!important;min-width:58px!important;max-width:58px!important;white-space:nowrap!important;overflow:visible!important;text-overflow:clip!important}}\n'; p.write_text(s.rstrip()+rule+'\n') if marker not in s else None"
       - name: Commit and push develop
         run: |
           git config user.name "github-actions[bot]"
