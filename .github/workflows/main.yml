@@ -1,4 +1,4 @@
-name: Deploy ZIP to main
+name: Deploy ZIP to develop
 
 on:
   push:
@@ -23,10 +23,12 @@ jobs:
         id: zip
         run: |
           ZIP=$(find . -maxdepth 2 -type f -name "*.zip" | head -n 1)
+
           if [ -z "$ZIP" ]; then
             echo "No ZIP file found."
             exit 1
           fi
+
           echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
 
       - name: Extract ZIP
@@ -35,10 +37,10 @@ jobs:
           mkdir extracted
           unzip -o "${{ steps.zip.outputs.zip }}" -d extracted
 
-      - name: Checkout main
+      - name: Checkout develop
         run: |
-          git fetch origin main
-          git checkout main
+          git fetch origin develop
+          git checkout develop
 
       - name: Replace app files
         run: |
@@ -53,6 +55,9 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
           git add README.md app.js index.html manifest.json style.css sw.js
+
           git commit -m "Auto deploy from ZIP" || echo "No changes to commit"
-          git push origin main
+
+          git push origin develop
