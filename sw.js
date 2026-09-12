@@ -1,5 +1,5 @@
-const CACHE_NAME = "money-rule-app-v47.16";
-const APP_SHELL = ["./", "./index.html", "./style.css?v=47.16", "./app.js?v=47.16", "./manifest.json"];
+const CACHE_NAME = "money-rule-app-v47.17";
+const APP_SHELL = ["./", "./index.html", "./style.css?v=47.17", "./app.js?v=47.17", "./manifest.json"];
 
 self.addEventListener("install", event => {
   event.waitUntil(
@@ -28,14 +28,18 @@ self.addEventListener("fetch", event => {
       if (path.endsWith("/index.html") || path.endsWith("/")) {
         const text = await response.text();
         const patched = text
-          .replaceAll("Ver.47.14", "Ver.47.16")
-          .replaceAll("ver.47.14", "ver.47.16")
-          .replaceAll("Ver.47.15", "Ver.47.16")
-          .replaceAll("ver.47.15", "ver.47.16")
-          .replaceAll("style.css?v=47.10", "style.css?v=47.16")
-          .replaceAll("style.css?v=47.15", "style.css?v=47.16")
-          .replaceAll("app.js?v=47.14", "app.js?v=47.16")
-          .replaceAll("app.js?v=47.15", "app.js?v=47.16");
+          .replaceAll("Ver.47.14", "Ver.47.17")
+          .replaceAll("ver.47.14", "ver.47.17")
+          .replaceAll("Ver.47.15", "Ver.47.17")
+          .replaceAll("ver.47.15", "ver.47.17")
+          .replaceAll("Ver.47.16", "Ver.47.17")
+          .replaceAll("ver.47.16", "ver.47.17")
+          .replaceAll("style.css?v=47.10", "style.css?v=47.17")
+          .replaceAll("style.css?v=47.15", "style.css?v=47.17")
+          .replaceAll("style.css?v=47.16", "style.css?v=47.17")
+          .replaceAll("app.js?v=47.14", "app.js?v=47.17")
+          .replaceAll("app.js?v=47.15", "app.js?v=47.17")
+          .replaceAll("app.js?v=47.16", "app.js?v=47.17");
         output = new Response(patched, {status: response.status, statusText: response.statusText, headers: response.headers});
       } else if (path.endsWith("/style.css")) {
         const text = await response.text();
