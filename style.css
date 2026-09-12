@@ -274,3 +274,6 @@ button{margin-top:14px;border:0;border-radius:9px;padding:11px 16px;font-size:15
   .expense-table th:nth-child(5),.expense-table td:nth-child(5){width:28%;}
   .expense-table td:nth-child(2){white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 }
+/* ver.47.8: mobile date cells must always show MM/DD */
+@media(max-width:600px){.expense-table th:nth-child(1),.expense-table td:nth-child(1){width:58px!important;min-width:58px!important;max-width:58px!important;white-space:nowrap!important;overflow:visible!important;text-overflow:clip!important}}
+
