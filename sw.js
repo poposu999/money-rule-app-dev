@@ -10,7 +10,7 @@ const TABLE_STYLE = `
 .expense-table .confirm-btn,.expense-table .fixed-paid,.expense-table .edit-btn,.expense-table .delete-btn{box-sizing:border-box!important;min-height:0!important}
 @media(max-width:600px){
  .expense-table{width:100%!important;min-width:0!important;table-layout:fixed!important;font-size:10px!important}
- .expense-table th,.expense-table td{font-size:10px!important;padding:4px 2px!important;line-height:1.05!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}
+ .expense-table th,.expense-table td{font-size:10px!important;padding:3px 2px!important;line-height:1.05!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}
  .expense-table th{font-size:10px!important;font-weight:600!important;background:#f8f8f8!important;color:#777!important}
  .expense-table th:nth-child(1),.expense-table td:nth-child(1){width:9%!important;min-width:0!important}
  .expense-table th:nth-child(2),.expense-table td:nth-child(2){width:30%!important;min-width:0!important}
