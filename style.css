@@ -263,3 +263,12 @@ button{margin-top:14px;border:0;border-radius:9px;padding:11px 16px;font-size:15
 
 
 /* ver.47.13: カテゴリと金額の間隔をさらに圧縮 */
+
+
+/* ver.47.13: カテゴリと金額の間隔をさらに圧縮 */
+@media(max-width:600px){
+ .expense-table th:nth-child(2),.expense-table td:nth-child(2){width:39%;}
+ .expense-table th:nth-child(3),.expense-table td:nth-child(3){width:10%;}
+ .expense-table th:nth-child(4),.expense-table td:nth-child(4){width:18%;}
+ .expense-table th:nth-child(5),.expense-table td:nth-child(5){width:24%;}
+}
