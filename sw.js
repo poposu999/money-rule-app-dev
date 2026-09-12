@@ -1,5 +1,5 @@
-const CACHE_NAME = "money-rule-app-v47.33";
-const APP_SHELL = ["./", "./index.html", "./style.css?v=47.33", "./app.js?v=47.33", "./manifest.json"];
+const CACHE_NAME = "money-rule-app-v47.34";
+const APP_SHELL = ["./", "./index.html", "./style.css?v=47.34", "./app.js?v=47.34", "./manifest.json"];
 self.addEventListener("install", event => { event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", event => { event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key)))).then(() => self.clients.claim())); });
 self.addEventListener("fetch", event => {
@@ -12,8 +12,8 @@ self.addEventListener("fetch", event => {
     let output = response;
     if (path.endsWith("/index.html") || path.endsWith("/")) {
       const text = await response.text();
-      let patched = text.replace(/Ver\.47\.\d+/g, "Ver.47.33").replace(/ver\.47\.\d+/g, "ver.47.33")
-        .replace(/style\.css\?v=47\.\d+/g, "style.css?v=47.33").replace(/app\.js\?v=47\.\d+/g, "app.js?v=47.33");
+      let patched = text.replace(/Ver\.47\.\d+/g, "Ver.47.34").replace(/ver\.47\.\d+/g, "ver.47.34")
+        .replace(/style\.css\?v=47\.\d+/g, "style.css?v=47.34").replace(/app\.js\?v=47\.\d+/g, "app.js?v=47.34");
       patched = patched.replace("</body>", `<script>
 document.addEventListener("DOMContentLoaded",function(){
   function adjustCategory(){
