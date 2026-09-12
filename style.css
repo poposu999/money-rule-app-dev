@@ -314,7 +314,7 @@ button{margin-top:14px;border:0;border-radius:9px;padding:11px 16px;font-size:15
  .expense-table .edit-btn,.expense-table .delete-btn,.expense-table .confirm-btn,.expense-table .fixed-paid{flex-shrink:0!important}
 }
 
-/* ver.47.33: スマホ支出テーブルの列幅と格子表示を調整 */
+/* ver.47.34: スマホ支出テーブルの列幅と格子表示を調整 */
 @media(max-width:600px){
  .expense-table{width:100%!important;min-width:0!important;table-layout:fixed!important;border-collapse:collapse!important}
  .expense-table th,.expense-table td{box-sizing:border-box!important}
@@ -326,11 +326,19 @@ button{margin-top:14px;border:0;border-radius:9px;padding:11px 16px;font-size:15
  .expense-table th,.expense-table td{border:1px solid #e1e3e5!important}
 }
 
-/* ver.47.33 */
+/* ver.47.34 */
 @media(max-width:600px){
  .expense-table th:nth-child(1),.expense-table td:nth-child(1){width:10%!important}
  .expense-table th:nth-child(2),.expense-table td:nth-child(2){width:30%!important}
  .expense-table th:nth-child(3),.expense-table td:nth-child(3){width:13%!important}
  .expense-table th:nth-child(4),.expense-table td:nth-child(4){width:17%!important}
  .expense-table th:nth-child(5),.expense-table td:nth-child(5){width:30%!important}
+}
+/* ver.47.34 */
+@media(max-width:600px){
+ .expense-table th:nth-child(1),.expense-table td:nth-child(1){width:9%!important}
+ .expense-table th:nth-child(2),.expense-table td:nth-child(2){width:31%!important}
+ .expense-table th:nth-child(3),.expense-table td:nth-child(3){width:14%!important}
+ .expense-table th:nth-child(4),.expense-table td:nth-child(4){width:18%!important}
+ .expense-table th:nth-child(5),.expense-table td:nth-child(5){width:28%!important}
 }
