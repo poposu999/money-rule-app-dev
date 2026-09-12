@@ -1,5 +1,5 @@
-const CACHE_NAME = "money-rule-app-v47.22";
-const APP_SHELL = ["./", "./index.html", "./style.css?v=47.22", "./app.js?v=47.22", "./manifest.json"];
+const CACHE_NAME = "money-rule-app-v47.23";
+const APP_SHELL = ["./", "./index.html", "./style.css?v=47.23", "./app.js?v=47.23", "./manifest.json"];
 
 self.addEventListener("install", event => {
   event.waitUntil(
@@ -28,26 +28,30 @@ self.addEventListener("fetch", event => {
       if (path.endsWith("/index.html") || path.endsWith("/")) {
         const text = await response.text();
         const patched = text
-          .replaceAll("Ver.47.14", "Ver.47.22")
-          .replaceAll("ver.47.14", "ver.47.22")
-          .replaceAll("Ver.47.15", "Ver.47.22")
-          .replaceAll("ver.47.15", "ver.47.22")
-          .replaceAll("Ver.47.16", "Ver.47.22")
-          .replaceAll("ver.47.16", "ver.47.22")
-          .replaceAll("Ver.47.17", "Ver.47.22")
-          .replaceAll("ver.47.17", "ver.47.22")
-          .replaceAll("Ver.47.18", "Ver.47.22")
-          .replaceAll("ver.47.18", "ver.47.22")
-          .replaceAll("Ver.47.19", "Ver.47.22")
-          .replaceAll("ver.47.19", "ver.47.22")
-          .replaceAll("Ver.47.20", "Ver.47.22")
-          .replaceAll("ver.47.20", "ver.47.22")
-          .replaceAll("Ver.47.21", "Ver.47.22")
-          .replaceAll("ver.47.21", "ver.47.22")
-          .replaceAll("style.css?v=47.20", "style.css?v=47.22")
-          .replaceAll("style.css?v=47.21", "style.css?v=47.22")
-          .replaceAll("app.js?v=47.20", "app.js?v=47.22")
-          .replaceAll("app.js?v=47.21", "app.js?v=47.22");
+          .replaceAll("Ver.47.14", "Ver.47.23")
+          .replaceAll("ver.47.14", "ver.47.23")
+          .replaceAll("Ver.47.15", "Ver.47.23")
+          .replaceAll("ver.47.15", "ver.47.23")
+          .replaceAll("Ver.47.16", "Ver.47.23")
+          .replaceAll("ver.47.16", "ver.47.23")
+          .replaceAll("Ver.47.17", "Ver.47.23")
+          .replaceAll("ver.47.17", "ver.47.23")
+          .replaceAll("Ver.47.18", "Ver.47.23")
+          .replaceAll("ver.47.18", "ver.47.23")
+          .replaceAll("Ver.47.19", "Ver.47.23")
+          .replaceAll("ver.47.19", "ver.47.23")
+          .replaceAll("Ver.47.20", "Ver.47.23")
+          .replaceAll("ver.47.20", "ver.47.23")
+          .replaceAll("Ver.47.21", "Ver.47.23")
+          .replaceAll("ver.47.21", "ver.47.23")
+          .replaceAll("Ver.47.22", "Ver.47.23")
+          .replaceAll("ver.47.22", "ver.47.23")
+          .replaceAll("style.css?v=47.20", "style.css?v=47.23")
+          .replaceAll("style.css?v=47.21", "style.css?v=47.23")
+          .replaceAll("style.css?v=47.22", "style.css?v=47.23")
+          .replaceAll("app.js?v=47.20", "app.js?v=47.23")
+          .replaceAll("app.js?v=47.21", "app.js?v=47.23")
+          .replaceAll("app.js?v=47.22", "app.js?v=47.23");
         output = new Response(patched, {status: response.status, statusText: response.statusText, headers: response.headers});
       } else if (path.endsWith("/style.css")) {
         const text = await response.text();
@@ -60,6 +64,16 @@ self.addEventListener("fetch", event => {
     transform:none!important;
     padding-left:2px!important;
     text-indent:56px!important;
+  }
+}
+
+/* ver.47.23: 金額列の幅をさらに縮小 */
+@media(max-width:600px){
+  .expense-table th:nth-child(4),.expense-table td:nth-child(4){
+    width:54px!important;
+    min-width:54px!important;
+    padding-left:0!important;
+    padding-right:2px!important;
   }
 }
 `;
