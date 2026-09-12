@@ -11,24 +11,20 @@ jobs:
     steps:
       - name: Wait for deploy workflow
         run: sleep 20
-      - name: Checkout repository
+      - name: Checkout develop
         uses: actions/checkout@v4
         with:
           ref: develop
           fetch-depth: 0
       - name: Fix mobile date cells
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          p=Path('style.css')
-          s=p.read_text()
-          rule='''
+          if ! grep -q 'ver.47.8: mobile date cells' style.css; then
+            cat >> style.css <<'EOF'
+
 /* ver.47.8: mobile date cells must always show MM/DD */
 @media(max-width:600px){.expense-table th:nth-child(1),.expense-table td:nth-child(1){width:58px!important;min-width:58px!important;max-width:58px!important;white-space:nowrap!important;overflow:visible!important;text-overflow:clip!important}}
-'''
-          if 'ver.47.8: mobile date cells' not in s:
-              p.write_text(s.rstrip()+rule+'\n')
-          PY
+EOF
+          fi
       - name: Commit and push develop
         run: |
           git config user.name "github-actions[bot]"
@@ -39,7 +35,7 @@ jobs:
       - name: Remove one-time workflow from update
         run: |
           git fetch origin update
-          git checkout update
+          git checkout -b update origin/update
           git rm .github/workflows/one-time-mobile-date-fix.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
