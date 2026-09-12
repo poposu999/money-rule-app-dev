@@ -1,0 +1,58 @@
+name: Deploy ZIP to main
+
+on:
+  push:
+    branches:
+      - update
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout update branch
+        uses: actions/checkout@v4
+        with:
+          ref: update
+          fetch-depth: 0
+
+      - name: Find ZIP
+        id: zip
+        run: |
+          ZIP=$(find . -maxdepth 2 -type f -name "*.zip" | head -n 1)
+          if [ -z "$ZIP" ]; then
+            echo "No ZIP file found."
+            exit 1
+          fi
+          echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
+
+      - name: Extract ZIP
+        run: |
+          rm -rf extracted
+          mkdir extracted
+          unzip -o "${{ steps.zip.outputs.zip }}" -d extracted
+
+      - name: Checkout main
+        run: |
+          git fetch origin main
+          git checkout main
+
+      - name: Replace app files
+        run: |
+          cp -f extracted/README.md .
+          cp -f extracted/app.js .
+          cp -f extracted/index.html .
+          cp -f extracted/manifest.json .
+          cp -f extracted/style.css .
+          cp -f extracted/sw.js .
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md app.js index.html manifest.json style.css sw.js
+          git commit -m "Auto deploy from ZIP" || echo "No changes to commit"
+          git push origin main
