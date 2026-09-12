@@ -40,10 +40,10 @@ self.addEventListener("fetch", event => {
       } else if (path.endsWith("/style.css")) {
         const text = await response.text();
         const fix = `
-/* ver.47.16: カテゴリ見出しの位置を左寄せ。列幅とセル位置は変更しない */
+/* ver.47.16: カテゴリ見出しを右へ調整。列幅とセル位置は変更しない */
 @media(max-width:600px){
   .expense-table th:nth-child(3),.expense-table td:nth-child(3){position:static!important;left:auto!important;transform:none!important;text-indent:0!important}
-  .expense-table th:nth-child(3),.expense-table td:nth-child(3){padding-left:4px!important}
+  .expense-table th:nth-child(3),.expense-table td:nth-child(3){padding-left:18px!important}
 }
 `;
         output = new Response(text + fix, {status: response.status, statusText: response.statusText, headers: response.headers});
