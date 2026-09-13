@@ -1,7 +1,7 @@
-const CACHE_NAME = "money-rule-app-v47.50";
-const APP_SHELL = ["./", "./index.html", "./style.css?v=47.50", "./app.js?v=47.50", "./manifest.json"];
+const CACHE_NAME = "money-rule-app-v47.51";
+const APP_SHELL = ["./", "./index.html", "./style.css?v=47.51", "./app.js?v=47.51", "./manifest.json"];
 const TABLE_STYLE = `
-/* ver.47.50: restore ver.47.48 table layout + forecast styling and keep edit modal layout */
+/* ver.47.51: restore ver.47.48 table layout + forecast styling and keep edit modal layout */
 .expense-table{width:100%!important;table-layout:fixed!important;border-collapse:collapse!important;font-size:14px!important}
 .expense-table th,.expense-table td{font-size:14px!important;padding:10px 8px!important;border-bottom:1px solid #eee!important;text-align:left!important;vertical-align:middle!important}
 .expense-table th{font-size:12px!important;font-weight:600!important;color:#777!important;background:#f8f8f8!important}
@@ -34,6 +34,10 @@ const TABLE_STYLE = `
 .forecast-status.good{color:#18794e!important}
 .forecast-status.danger{color:#b42318!important}
 .forecast-status.neutral{color:#6b7280!important}
+
+/* ver.47.51: wrap the large 「今月の状況」 and 「グラフ」 sections in white cards */
+.stats,.charts{background:#fff!important;border:1px solid #e5e7eb!important;border-radius:14px!important;padding:16px!important;box-shadow:0 2px 8px rgba(0,0,0,.04)!important}
+@media(max-width:600px){.stats,.charts{padding:12px!important}}
 
 #editModal .modal-actions,#plannedEditModal .modal-actions,#fixedEditModal .modal-actions{display:flex!important;flex-wrap:wrap!important;gap:8px!important}
 #editModal #rollbackToPlanned{order:1!important;flex:0 0 100%!important;width:100%!important}
@@ -92,21 +96,22 @@ self.addEventListener("fetch", event => {
     if (path.endsWith("/index.html") || path.endsWith("/")) {
       const text = await response.text();
       const patched = text
-        .replace(/style\.css\?v=47\.45/g, "style.css?v=47.50")
-        .replace(/style\.css\?v=47\.47/g, "style.css?v=47.50")
-        .replace(/style\.css\?v=47\.48/g, "style.css?v=47.50")
-        .replace(/style\.css\?v=47\.49/g, "style.css?v=47.50")
-        .replace(/app\.js\?v=47\.45/g, "app.js?v=47.50")
-        .replace(/app\.js\?v=47\.47/g, "app.js?v=47.50")
-        .replace(/app\.js\?v=47\.48/g, "app.js?v=47.50")
-        .replace(/app\.js\?v=47\.49/g, "app.js?v=47.50")
-        .replace(/ver\.47\.45/g, "ver.47.50")
-        .replace(/ver\.47\.46/g, "ver.47.50")
-        .replace(/ver\.47\.47/g, "ver.47.50")
-        .replace(/ver\.47\.48/g, "ver.47.50")
-        .replace(/ver\.47\.49/g, "ver.47.50")
+        .replace(/style\.css\?v=47\.45/g, "style.css?v=47.51")
+        .replace(/style\.css\?v=47\.47/g, "style.css?v=47.51")
+        .replace(/style\.css\?v=47\.48/g, "style.css?v=47.51")
+        .replace(/style\.css\?v=47\.49/g, "style.css?v=47.51")
+        .replace(/app\.js\?v=47\.45/g, "app.js?v=47.51")
+        .replace(/app\.js\?v=47\.47/g, "app.js?v=47.51")
+        .replace(/app\.js\?v=47\.48/g, "app.js?v=47.51")
+        .replace(/app\.js\?v=47\.49/g, "app.js?v=47.51")
+        .replace(/ver\.47\.45/g, "ver.47.51")
+        .replace(/ver\.47\.46/g, "ver.47.51")
+        .replace(/ver\.47\.47/g, "ver.47.51")
+        .replace(/ver\.47\.48/g, "ver.47.51")
+        .replace(/ver\.47\.49/g, "ver.47.51")
+        .replace(/ver\.47\.50/g, "ver.47.51")
         .replace(/変更を保存/g, "保存")
-        .replace(/<\/head>/i, `<style id="ver4750-table-style">${TABLE_STYLE}</style><script id="ver4750-edit-modal-script">${EDIT_MODAL_SCRIPT}</script>\n</head>`);
+        .replace(/<\/head>/i, `<style id="ver4751-table-style">${TABLE_STYLE}</style><script id="ver4751-edit-modal-script">${EDIT_MODAL_SCRIPT}</script>\n</head>`);
       output = new Response(patched, {status: response.status, statusText: response.statusText, headers: response.headers});
     }
     const copy = output.clone(); caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy)); return output;
