@@ -1,18 +1,21 @@
-const CACHE_NAME = "money-rule-app-v47.70";
-const APP_SHELL = ["./","./index.html","./style.css?v=47.70","./app.js?v=47.70","./manifest.json"];
+const CACHE_NAME = "money-rule-app-v47.71";
+const APP_SHELL = ["./","./index.html","./style.css?v=47.71","./app.js?v=47.71","./manifest.json"];
 
 function patchIndexResponse(response) {
   return response.text().then(html => {
-    html = html.replace(/ver\.47\.69/g, "ver.47.70");
-    html = html.replace(/style\.css\?v=47\.69/g, "style.css?v=47.70");
-    html = html.replace(/app\.js\?v=47\.69/g, "app.js?v=47.70");
+    html = html.replace(/ver\.47\.69/g, "ver.47.71");
+    html = html.replace(/ver\.47\.70/g, "ver.47.71");
+    html = html.replace(/style\.css\?v=47\.69/g, "style.css?v=47.71");
+    html = html.replace(/style\.css\?v=47\.70/g, "style.css?v=47.71");
+    html = html.replace(/app\.js\?v=47\.69/g, "app.js?v=47.71");
+    html = html.replace(/app\.js\?v=47\.70/g, "app.js?v=47.71");
     html = html.replace(
       '<p>この支出を削除しますか？</p>',
       '<p id="deleteConfirmMessage">この支出を削除しますか？</p>'
     );
     html = html.replace(
       '</head>',
-      `<style id="ver47-70-table-restore">
+      `<style id="ver47-71-table-restore">
 @media(max-width:600px){
   .expense-table{width:100%!important;min-width:0!important;table-layout:fixed!important}
   .expense-table th:nth-child(1),.expense-table td:nth-child(1){width:9%!important;min-width:0!important}
@@ -62,7 +65,7 @@ self.addEventListener("activate", event => {
       .then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))))
       .then(() => self.clients.claim())
       .then(() => self.clients.matchAll({type:"window", includeUncontrolled:true}))
-      .then(clients => clients.forEach(client => client.postMessage({type:"APP_UPDATED"})))
+      .then(clients => Promise.all(clients.map(client => client.navigate(client.url))))
   );
 });
 
