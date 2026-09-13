@@ -9,17 +9,20 @@ function setupExpenseDeleteFlow(){
   const closeBtn=document.getElementById("closeDeleteConfirm");
   if(!editDelete||!confirmModal||!confirmBtn) return;
   const closeConfirm=()=>confirmModal.classList.add("hidden");
-  editDelete.addEventListener("click",()=>{confirmModal.classList.remove("hidden");});
+  editDelete.addEventListener("click",()=>confirmModal.classList.remove("hidden"));
   [cancelBtn,closeBtn].forEach(b=>b&&b.addEventListener("click",closeConfirm));
   confirmBtn.addEventListener("click",()=>{
-    if(typeof editingExpenseIndex!=="number") return;
-    if(!confirm("この支出を削除しますか？")) return;
-    expenses.splice(editingExpenseIndex,1);
-    saveData();
+    const id=document.getElementById("editModal")?.dataset.id;
+    if(!id) return;
+    const e=state.expenses.find(x=>String(x.id)===String(id));
+    if(!e) return;
+    state.expenses=state.expenses.filter(x=>String(x.id)!==String(id));
+    save();
     closeConfirm();
-    const editModal=document.getElementById("editModal");
-    if(editModal) editModal.classList.add("hidden");
-    render();
+    closeEdit();
+    renderExpenses();
+    calc();
+    requestAnimationFrame(()=>{const n=getNumbers();renderCategoryChart(n.es);renderDailyChart(n.es);renderMonthlyChart();renderSavingsChart();});
   });
 }
 
@@ -112,3 +115,5 @@ function showMemoPopup(cell,event){const text=cell.dataset.memo||"";if(!text)ret
 document.addEventListener("click",e=>{const cell=e.target.closest(".memo-cell");if(cell){showMemoPopup(cell,e);return;}if(!e.target.closest("#memoPopup"))$("memoPopup")?.classList.add("hidden");});
 document.addEventListener("click",e=>{const b=e.target.closest(".minus-btn");if(b){toggleSection(b.dataset.section);return;}const t=e.target.closest('.stat-toggle-btn[data-stat="income"]');if(t){statPrefs.income=true;localStorage.setItem("moneyRuleStatPrefs",JSON.stringify(statPrefs));applyStatPrefs();}});$("incomeToggle").onclick=()=>{statPrefs.income=!Boolean(statPrefs.income);localStorage.setItem("moneyRuleStatPrefs",JSON.stringify(statPrefs));applyStatPrefs();};
 loadSettings();restoreInputMemory();document.querySelectorAll("[data-entry-tab]").forEach((t,i)=>t.setAttribute("aria-selected",i===0?"true":"false"));bindAmountCalculator("expenseAmount");bindAmountCalculator("plannedAmount");bindAmountCalculator("editAmount");bindAmountCalculator("plannedEditAmount");renderFixedExpenses();renderPlannedExpenses();renderExpenses();calc();applySectionPrefs();applyStatPrefs();requestAnimationFrame(()=>{const n=getNumbers();renderCategoryChart(n.es);renderDailyChart(n.es);renderMonthlyChart();renderSavingsChart();});
+
+setupExpenseDeleteFlow();
