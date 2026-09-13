@@ -1,41 +1,82 @@
-const CACHE_NAME = "money-rule-app-v47.75";
-const APP_SHELL = ["./","./index.html","./style.css?v=47.75","./app.js?v=47.75","./manifest.json"];
+const CACHE_NAME = "money-rule-app-v47.76";
+const APP_SHELL = ["./","./index.html","./style.css?v=47.76","./app.js?v=47.76","./manifest.json"];
 
 function patchIndexResponse(response) {
   return response.text().then(html => {
-    html = html.replace(/ver\.47\.(68|69|70|71|72|73|74)/g, "ver.47.75");
-    html = html.replace(/style\.css\?v=47\.(68|69|70|71|72|73|74)/g, "style.css?v=47.75");
-    html = html.replace(/app\.js\?v=47\.(68|69|70|71|72|73|74)/g, "app.js?v=47.75");
+    html = html.replace(/ver\.47\.(68|69|70|71|72|73|74|75)/g, "ver.47.76");
+    html = html.replace(/style\.css\?v=47\.(68|69|70|71|72|73|74|75)/g, "style.css?v=47.76");
+    html = html.replace(/app\.js\?v=47\.(68|69|70|71|72|73|74|75)/g, "app.js?v=47.76");
     html = html.replace(
       '<p>この支出を削除しますか？</p>',
       '<p id="deleteConfirmMessage">この支出を削除しますか？</p>'
     );
     html = html.replace(
       '</head>',
-      `<style id="ver47-75-table-restore">
-@media(max-width:600px){
-  .expense-table{width:100%!important;min-width:0!important;table-layout:fixed!important}
-  .expense-table th:nth-child(1),.expense-table td:nth-child(1){width:9%!important;min-width:0!important}
-  .expense-table th:nth-child(2),.expense-table td:nth-child(2){width:37%!important;min-width:0!important}
-  .expense-table th:nth-child(3),.expense-table td:nth-child(3){width:14%!important;min-width:0!important}
-  .expense-table th:nth-child(4),.expense-table td:nth-child(4){width:18%!important;min-width:0!important}
-  .expense-table th:nth-child(5),.expense-table td:nth-child(5){width:22%!important;min-width:0!important}
+      `<style id="ver47-76-table-unify">
+/* 固定費一覧を基準に、3つの一覧テーブルを共通レイアウトへ統一 */
+.expense-table,.planned-expense-table,.fixed-expense-table{
+  width:100%!important;
+  table-layout:fixed!important;
+  border-collapse:collapse!important;
+  font-size:14px!important;
 }
-.expense-table .confirm-btn,.expense-table .fixed-paid{
-  display:inline-flex!important;
-  align-items:center!important;
-  justify-content:center!important;
+.expense-table th,.expense-table td,
+.planned-expense-table th,.planned-expense-table td,
+.fixed-expense-table th,.fixed-expense-table td{
   box-sizing:border-box!important;
-  flex:0 0 auto!important;
-  min-width:5.8em!important;
-  height:auto!important;
-  min-height:30px!important;
-  margin:0 0 0 5px!important;
-  padding:5px 7px!important;
-  font-size:11px!important;
-  line-height:1.25!important;
-  white-space:nowrap!important;
-  overflow:visible!important;
+  padding:10px 8px!important;
+  border-bottom:1px solid #eee!important;
+  vertical-align:middle!important;
+  white-space:nowrap;
+  text-align:left;
+}
+.expense-table th,.planned-expense-table th,.fixed-expense-table th{
+  font-size:12px!important;
+  color:#777!important;
+  font-weight:600!important;
+  background:#f8f8f8!important;
+}
+.expense-table th:nth-child(1),.expense-table td:nth-child(1),
+.planned-expense-table th:nth-child(1),.planned-expense-table td:nth-child(1),
+.fixed-expense-table th:nth-child(1),.fixed-expense-table td:nth-child(1){width:10%!important}
+.expense-table th:nth-child(2),.expense-table td:nth-child(2),
+.planned-expense-table th:nth-child(2),.planned-expense-table td:nth-child(2),
+.fixed-expense-table th:nth-child(2),.fixed-expense-table td:nth-child(2){width:34%!important;white-space:normal;overflow-wrap:anywhere}
+.expense-table th:nth-child(3),.expense-table td:nth-child(3),
+.planned-expense-table th:nth-child(3),.planned-expense-table td:nth-child(3),
+.fixed-expense-table th:nth-child(3),.fixed-expense-table td:nth-child(3){width:14%!important}
+.expense-table th:nth-child(4),.expense-table td:nth-child(4),
+.planned-expense-table th:nth-child(4),.planned-expense-table td:nth-child(4),
+.fixed-expense-table th:nth-child(4),.fixed-expense-table td:nth-child(4){width:18%!important}
+.expense-table th:nth-child(5),.expense-table td:nth-child(5),
+.planned-expense-table th:nth-child(5),.planned-expense-table td:nth-child(5),
+.fixed-expense-table th:nth-child(5),.fixed-expense-table td:nth-child(5){width:24%!important}
+.expense-table .amount-col,.planned-expense-table .amount-col,.fixed-expense-table .amount-col{text-align:right!important;padding-right:8px!important}
+.expense-table .action-col,.planned-expense-table .action-col,.fixed-expense-table .action-col{text-align:right!important;white-space:nowrap!important}
+.expense-table .edit-delete-buttons,.expense-table .expense-actions,
+.planned-expense-table .edit-delete-buttons,.planned-expense-table .expense-actions,
+.fixed-expense-table .edit-delete-buttons,.fixed-expense-table .expense-actions{
+  display:flex!important;align-items:center!important;justify-content:flex-end!important;flex-wrap:nowrap!important;gap:4px!important;
+}
+.expense-table .confirm-btn,.expense-table .fixed-paid,.expense-table .edit-btn,.expense-table .delete-btn,
+.planned-expense-table .confirm-btn,.planned-expense-table .fixed-paid,.planned-expense-table .edit-btn,.planned-expense-table .delete-btn,
+.fixed-expense-table .confirm-btn,.fixed-expense-table .fixed-paid,.fixed-expense-table .edit-btn,.fixed-expense-table .delete-btn{
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  box-sizing:border-box!important;width:auto!important;height:auto!important;min-height:30px!important;
+  margin:0!important;padding:5px 7px!important;font-size:11px!important;line-height:1.25!important;
+  border-radius:6px!important;white-space:nowrap!important;overflow:visible!important;flex:0 0 auto!important;
+}
+@media(max-width:600px){
+  .expense-table,.planned-expense-table,.fixed-expense-table{min-width:0!important}
+  .expense-table th,.expense-table td,.planned-expense-table th,.planned-expense-table td,.fixed-expense-table th,.fixed-expense-table td{padding:6px 4px!important;font-size:10px!important}
+  .expense-table th:nth-child(1),.expense-table td:nth-child(1),.planned-expense-table th:nth-child(1),.planned-expense-table td:nth-child(1),.fixed-expense-table th:nth-child(1),.fixed-expense-table td:nth-child(1){width:10%!important}
+  .expense-table th:nth-child(2),.expense-table td:nth-child(2),.planned-expense-table th:nth-child(2),.planned-expense-table td:nth-child(2),.fixed-expense-table th:nth-child(2),.fixed-expense-table td:nth-child(2){width:34%!important}
+  .expense-table th:nth-child(3),.expense-table td:nth-child(3),.planned-expense-table th:nth-child(3),.planned-expense-table td:nth-child(3),.fixed-expense-table th:nth-child(3),.fixed-expense-table td:nth-child(3){width:14%!important}
+  .expense-table th:nth-child(4),.expense-table td:nth-child(4),.planned-expense-table th:nth-child(4),.planned-expense-table td:nth-child(4),.fixed-expense-table th:nth-child(4),.fixed-expense-table td:nth-child(4){width:18%!important}
+  .expense-table th:nth-child(5),.expense-table td:nth-child(5),.planned-expense-table th:nth-child(5),.planned-expense-table td:nth-child(5),.fixed-expense-table th:nth-child(5),.fixed-expense-table td:nth-child(5){width:24%!important}
+  .expense-table .confirm-btn,.expense-table .fixed-paid,.expense-table .edit-btn,.expense-table .delete-btn,
+  .planned-expense-table .confirm-btn,.planned-expense-table .fixed-paid,.planned-expense-table .edit-btn,.planned-expense-table .delete-btn,
+  .fixed-expense-table .confirm-btn,.fixed-expense-table .fixed-paid,.fixed-expense-table .edit-btn,.fixed-expense-table .delete-btn{font-size:8px!important;padding:4px 3px!important;min-height:28px!important}
 }
 </style></head>`
     );
