@@ -1,7 +1,7 @@
-const CACHE_NAME = "money-rule-app-v47.40";
-const APP_SHELL = ["./", "./index.html", "./style.css?v=47.40", "./app.js?v=47.40", "./manifest.json"];
+const CACHE_NAME = "money-rule-app-v47.41";
+const APP_SHELL = ["./", "./index.html", "./style.css?v=47.41", "./app.js?v=47.41", "./manifest.json"];
 const TABLE_STYLE = `
-/* ver.47.40: edit modal delete button layout */
+/* ver.47.41: edit modal delete button display fix */
 .expense-table{width:100%!important;table-layout:fixed!important;border-collapse:collapse!important;font-size:14px!important}
 .expense-table th,.expense-table td{font-size:14px!important;padding:10px 8px!important;border-bottom:1px solid #eee!important;text-align:left!important;vertical-align:middle!important}
 .expense-table th{font-size:12px!important;font-weight:600!important;color:#777!important;background:#f8f8f8!important}
@@ -52,7 +52,7 @@ const EDIT_MODAL_SCRIPT = `
     if(actions) box.insertBefore(btn,actions);
     else box.appendChild(btn);
   }
-  function scan(){document.querySelectorAll('[id$="EditModal"]').forEach(setupDeleteButton);}
+  function scan(){document.querySelectorAll('[id$="EditModal" i]').forEach(setupDeleteButton);}
   const observer=new MutationObserver(scan);
   observer.observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['class','data-id']});
   scan();
@@ -71,10 +71,10 @@ self.addEventListener("fetch", event => {
     if (path.endsWith("/index.html") || path.endsWith("/")) {
       const text = await response.text();
       const patched = text
-        .replace(/style\.css\?v=47\.34/g, "style.css?v=47.40")
-        .replace(/app\.js\?v=47\.34/g, "app.js?v=47.40")
-        .replace(/ver\.47\.39/g, "ver.47.40")
-        .replace(/<\/head>/i, `<style id="ver4740-table-style">${TABLE_STYLE}</style><script id="ver4740-delete-script">${EDIT_MODAL_SCRIPT}</script>\n</head>`);
+        .replace(/style\.css\?v=47\.41/g, "style.css?v=47.41")
+        .replace(/app\.js\?v=47\.41/g, "app.js?v=47.41")
+        .replace(/ver\.47\.40/g, "ver.47.41")
+        .replace(/<\/head>/i, `<style id="ver4741-table-style">${TABLE_STYLE}</style><script id="ver4741-delete-script">${EDIT_MODAL_SCRIPT}</script>\n</head>`);
       output = new Response(patched, {status: response.status, statusText: response.statusText, headers: response.headers});
     }
     const copy = output.clone(); caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy)); return output;
