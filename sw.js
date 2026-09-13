@@ -34,7 +34,7 @@ const TABLE_STYLE = `
 .edit-modal-delete-btn{box-sizing:border-box!important;padding:9px 12px!important;border:1px solid #ddd!important;border-radius:8px!important;background:#fff!important;color:#c44!important;font-size:14px!important;cursor:pointer!important}
 `;
 const EDIT_MODAL_SCRIPT = `
-(function(){})();
+(function(){});
 `;
 self.addEventListener("install", event => { event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", event => { event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key)))).then(() => self.clients.claim())); });
@@ -49,11 +49,11 @@ self.addEventListener("fetch", event => {
     if (path.endsWith("/index.html") || path.endsWith("/")) {
       const text = await response.text();
       const patched = text
-        .replace(/style\\.css\\?v=47\\.45/g, "style.css?v=47.47")
-        .replace(/app\\.js\\?v=47\\.45/g, "app.js?v=47.47")
-        .replace(/ver\\.47\\.45/g, "ver.47.47")
+        .replace(/style\.css\?v=47\.45/g, "style.css?v=47.47")
+        .replace(/app\.js\?v=47\.45/g, "app.js?v=47.47")
+        .replace(/ver\.47\.45/g, "ver.47.47")
         .replace(/変更を保存/g, "保存")
-        .replace(/<\\/head>/i, `<style id="ver4747-table-style">${TABLE_STYLE}</style><script id="ver4747-delete-script">${EDIT_MODAL_SCRIPT}</script>\\n</head>`);
+        .replace(/<\/head>/i, `<style id="ver4747-table-style">${TABLE_STYLE}</style><script id="ver4747-delete-script">${EDIT_MODAL_SCRIPT}</script>\n</head>`);
       output = new Response(patched, {status: response.status, statusText: response.statusText, headers: response.headers});
     }
     const copy = output.clone(); caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy)); return output;
