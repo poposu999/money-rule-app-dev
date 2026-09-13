@@ -1,18 +1,23 @@
 const CACHE_NAME = "money-rule-app-v47.49";
 const APP_SHELL = ["./", "./index.html", "./style.css?v=47.49", "./app.js?v=47.49", "./manifest.json"];
 const TABLE_STYLE = `
+/* ver.47.49: preserve forecast styling */
+.forecast-box{background:#f8f8f8!important;border-radius:10px!important;padding:11px 12px!important}
+.forecast-label{font-size:12px!important}
+.forecast-box strong{font-size:20px!important;margin-top:3px!important}
+.forecast-status{margin-top:6px!important;font-size:12px!important;font-weight:600!important}
+.forecast-status.good{color:#18794e!important}
+.forecast-status.danger{color:#b42318!important}
+.forecast-status.neutral{color:#6b7280!important}
 /* ver.47.49: edit modal layout for expense/planned/fixed */
 #editModal .modal-actions,#plannedEditModal .modal-actions,#fixedEditModal .modal-actions{display:flex!important;flex-wrap:wrap!important;gap:8px!important}
 #editModal #rollbackToPlanned{order:1!important;flex:0 0 100%!important;width:100%!important}
 #editModal #deleteEditExpense,#editModal #cancelEdit,#editModal #saveEdit,
 #plannedEditModal #deletePlannedEdit,#plannedEditModal #cancelPlannedEdit,#plannedEditModal #savePlannedEdit,
-#fixedEditModal #deleteFixedEdit,#fixedEditModal #cancelFixedEdit,#fixedEditModal #saveFixedEdit{order:2!important;flex:1 1 0!important;min-width:0!important;width:auto!important}
-#plannedEditModal #deletePlannedEdit,#fixedEditModal #deleteFixedEdit{order:2!important}
-#plannedEditModal #cancelPlannedEdit,#fixedEditModal #cancelFixedEdit{order:3!important}
-#plannedEditModal #savePlannedEdit,#fixedEditModal #saveFixedEdit{order:4!important}
-#editModal #deleteEditExpense{order:2!important}
-#editModal #cancelEdit{order:3!important}
-#editModal #saveEdit{order:4!important}
+#fixedEditModal #deleteFixedEdit,#fixedEditModal #cancelFixedEdit,#fixedEditModal #saveFixedEdit{flex:1 1 0!important;min-width:0!important;width:auto!important}
+#editModal #deleteEditExpense,#plannedEditModal #deletePlannedEdit,#fixedEditModal #deleteFixedEdit{order:2!important}
+#editModal #cancelEdit,#plannedEditModal #cancelPlannedEdit,#fixedEditModal #cancelFixedEdit{order:3!important}
+#editModal #saveEdit,#plannedEditModal #savePlannedEdit,#fixedEditModal #saveFixedEdit{order:4!important}
 `;
 const EDIT_MODAL_SCRIPT = `
 (function(){
