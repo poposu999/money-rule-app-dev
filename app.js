@@ -1,5 +1,5 @@
 const KEY="moneyRuleAppV2";
-const VERSION="47.45";
+const VERSION="47.46";
 // Expense deletion flow: edit modal -> final confirmation modal -> delete
 function setupExpenseDeleteFlow(){
   const editDelete=document.getElementById("deleteEditExpense");
