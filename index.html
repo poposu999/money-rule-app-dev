@@ -7,30 +7,7 @@
 <title>家計簿</title>
 <meta name="theme-color" content="#ffffff"/>
 <link rel="manifest" href="manifest.json"/>
-<link href="style.css?v=47.41" rel="stylesheet"/>
-<style id="ver4710-table-fix">
-@media(max-width:600px){
-  .expense-table-wrap{overflow-x:hidden!important;width:100%!important}
-  .expense-table{width:100%!important;min-width:0!important;table-layout:fixed!important;font-size:10.5px!important}
-  .expense-table th,.expense-table td{padding:3px 2px!important;line-height:1.05!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}
-  .expense-table th:nth-child(1),.expense-table td:nth-child(1){width:9%!important;min-width:0!important}
-  .expense-table th:nth-child(2),.expense-table td:nth-child(2){width:31%!important;min-width:0!important}
-  .expense-table th:nth-child(3),.expense-table td:nth-child(3){width:14%!important;min-width:0!important}
-  .expense-table th:nth-child(4),.expense-table td:nth-child(4){width:18%!important;min-width:0!important}
-  .expense-table th:nth-child(5),.expense-table td:nth-child(5){width:28%!important;min-width:0!important}
-  .expense-table .amount-col{white-space:nowrap!important;text-align:right!important}
-  .expense-table .amount-col strong{font-weight:400!important;white-space:nowrap!important}
-  .expense-table .action-col{white-space:nowrap!important;text-align:right!important}
-  .expense-table .action-col .expense-actions{display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:2px!important;flex-wrap:nowrap!important;white-space:nowrap!important}
-  .expense-table .action-col .edit-delete-buttons{display:flex!important;align-items:center!important;gap:2px!important;flex-wrap:nowrap!important;white-space:nowrap!important}
-  .expense-table .action-col .move-buttons{display:flex!important;flex-direction:row!important;gap:1px!important;flex-shrink:0!important}
-  .expense-table .action-col button{margin:0!important;padding:2px 3px!important;font-size:8px!important;line-height:1.05!important;min-width:0!important;white-space:nowrap!important}
-}
-
-/* ver.47.34: 予定支出・固定費の操作ボタンを今月の支出と同サイズに統一 */
-.confirm-btn,.fixed-paid{margin:0 0 0 5px;padding:5px 8px;font-size:11px;line-height:normal;}
-@media(max-width:600px){.confirm-btn,.fixed-paid{margin:0!important;padding:2px 3px!important;font-size:8px!important;line-height:1.05!important;min-width:0!important;white-space:nowrap!important;}}
-</style>
+<link href="style.css?v=47.42" rel="stylesheet"/>
 </head>
 <body>
 <main class="container">
@@ -183,16 +160,80 @@
 <div class="chart-summary" id="monthlyChartSummary"></div>
 </div>
 <div class="card chart-card">
-<h2>月別の収入・支出推移</h2>
-<div class="line-chart-wrap">
-<svg aria-label="月別の収入・支出推移" id="monthlyIncomeExpenseChart" role="img" viewbox="0 0 700 260"></svg>
+<h2>月別の貯金額</h2>
+<div class="bar-chart-wrap">
+<svg aria-label="月別の貯金額" id="savingsChart" role="img" viewbox="0 0 700 260"></svg>
 </div>
-<div class="chart-summary" id="monthlyIncomeExpenseChartSummary"></div>
+<div class="chart-summary" id="savingsChartSummary"></div>
 </div>
+</section><section class="card" data-section-content="income">
+<div class="section-title"><h2>前月の収入</h2><button class="minus-btn" data-section="income">−</button></div>
+<label>前月の収入
+      <input id="income" inputmode="numeric" min="0" placeholder="例)250000" step="1000" type="number"/>
+</label>
+<label>ボーナス額
+      <input id="bonus" inputmode="numeric" min="0" placeholder="例)0" step="1000" type="number"/>
+</label>
+<button id="saveIncome">収入を保存</button>
+</section><section class="card" data-section-content="settings">
+<div class="section-title"><h2>家計ルール</h2><button class="minus-btn" data-section="settings">−</button></div>
+<div class="grid">
+<label>毎月の最低限の手取り
+        <input id="minimumTakeHome" inputmode="numeric" min="0" placeholder="例)200000" step="1000" type="number"/>
+</label>
+<label>毎月の貯金目標
+        <input id="savingsTarget" inputmode="numeric" min="0" placeholder="例)50000" step="1000" type="number"/>
+</label>
+<label>超過分のお小遣い割合（%）
+        <input id="extraAllowancePercent" max="100" min="0" placeholder="例)60" step="1" type="number" value="60"/>
+</label>
+<label>超過分の貯金割合（%）
+        <input id="extraSavingsPercent" max="100" min="0" placeholder="例)40" step="1" type="number" value="40"/>
+</label>
+</div>
+<button id="saveSettings">ルールを保存</button>
 </section><section class="card" data-section-content="backup">
-<div class="section-title"><h2>データ管理</h2><button class="minus-btn" data-section="backup">−</button></div>
-<div class="backup-actions"><button id="exportData" class="secondary-btn">バックアップを書き出す</button><button id="importData" class="secondary-btn">バックアップを読み込む</button><input id="importFile" type="file" accept="application/json" hidden></div>
-</section><div id="editModal" class="modal hidden">
+<div class="section-title"><h2>データのバックアップ</h2><button class="minus-btn" data-section="backup">−</button></div>
+<p class="muted">ブラウザを変更するときは、バックアップファイルを書き出して新しいブラウザで読み込んでください。</p>
+<div class="backup-actions">
+<button id="exportBackup" type="button">バックアップを書き出す</button>
+<button class="secondary-btn" id="importBackupButton" type="button">バックアップを読み込む</button>
+<input accept="application/json,.json" hidden="" id="importBackup" type="file"/>
+</div>
+<p class="entry-hint" id="backupStatus"></p>
+</section>
+<div id="fixedEditModal" class="modal hidden">
+  <div class="modal-box">
+    <div class="modal-header"><h2>固定費を編集</h2><button id="closeFixedModal" class="close-btn">×</button></div>
+    <label>金額<input id="fixedEditAmount" type="number" min="0" step="100" inputmode="numeric"></label>
+    <label>カテゴリ
+      <select id="fixedEditCategory">
+        <option>住居費</option><option>通信費</option><option>水光熱費</option><option>保険</option><option>サブスク</option><option>交通費</option><option>その他</option>
+      </select>
+    </label>
+    <label>メモ<input id="fixedEditMemo" type="text" placeholder="例)家賃など"></label>
+    <label>毎月の支払日<input id="fixedEditDay" type="number" min="1" max="31" step="1" inputmode="numeric"></label>
+    <div class="modal-reorder"><span>同じ支払日内の並び順</span><div><button id="moveFixedEditUp" type="button" class="secondary-btn">▲ 上へ</button><button id="moveFixedEditDown" type="button" class="secondary-btn">▼ 下へ</button></div></div>
+    <div class="modal-actions"><button id="cancelFixedEdit" class="secondary-btn">キャンセル</button><button id="saveFixedEdit">変更を保存</button></div>
+  </div>
+</div>
+<div id="plannedEditModal" class="modal hidden">
+  <div class="modal-box">
+    <div class="modal-header"><h2>予定支出を編集</h2><button id="closePlannedModal" class="close-btn">×</button></div>
+    <label>金額<input id="plannedEditAmount" type="number" min="0" step="100" inputmode="numeric"></label>
+    <label>カテゴリ
+      <select id="plannedEditCategory">
+        <option>食費</option><option>日用品</option><option>水光熱費</option><option>交通費</option><option>美容</option><option>医療関係</option>
+        <option>娯楽</option><option>外食</option><option>その他</option>
+      </select>
+    </label>
+    <label>メモ<input id="plannedEditMemo" type="text"></label>
+    <label>予定日<input id="plannedEditDate" type="date" placeholder="例)2026/09/08"></label>
+    <div class="modal-reorder"><span>同じ日付内の並び順</span><div><button id="movePlannedEditUp" type="button" class="secondary-btn">▲ 上へ</button><button id="movePlannedEditDown" type="button" class="secondary-btn">▼ 下へ</button></div></div>
+    <div class="modal-actions"><button id="cancelPlannedEdit" class="secondary-btn">キャンセル</button><button id="savePlannedEdit">変更を保存</button></div>
+  </div>
+</div>
+<div id="editModal" class="modal hidden">
   <div class="modal-box">
     <div class="modal-header"><h2>支出を編集</h2><button id="closeModal" class="close-btn">×</button></div>
     <label>金額<input id="editAmount" type="number" min="0" step="100" inputmode="numeric"></label>
@@ -211,10 +252,10 @@
 <div id="memoPopup" class="memo-popup hidden" role="status"></div>
 <div id="inputValidation" class="validation-warning hidden"></div>
 <footer class="app-footer">
-<h1>家計簿 <span class="app-version">ver.47.41</span></h1>
+<h1>家計簿 <span class="app-version">ver.47.42</span></h1>
 <p>収入・固定費・貯金を先に整理して、今月使える金額を自動計算。</p>
 </footer></main>
-<script src="app.js?v=47.41"></script>
+<script src="app.js?v=47.42"></script>
 <script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));}</script>
 </body>
 </html>
