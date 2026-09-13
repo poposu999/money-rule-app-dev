@@ -3,10 +3,13 @@ const APP_SHELL = ["./","./index.html","./style.css?v=47.71","./app.js?v=47.71",
 
 function patchIndexResponse(response) {
   return response.text().then(html => {
+    html = html.replace(/ver\.47\.68/g, "ver.47.71");
     html = html.replace(/ver\.47\.69/g, "ver.47.71");
     html = html.replace(/ver\.47\.70/g, "ver.47.71");
+    html = html.replace(/style\.css\?v=47\.68/g, "style.css?v=47.71");
     html = html.replace(/style\.css\?v=47\.69/g, "style.css?v=47.71");
     html = html.replace(/style\.css\?v=47\.70/g, "style.css?v=47.71");
+    html = html.replace(/app\.js\?v=47\.68/g, "app.js?v=47.71");
     html = html.replace(/app\.js\?v=47\.69/g, "app.js?v=47.71");
     html = html.replace(/app\.js\?v=47\.70/g, "app.js?v=47.71");
     html = html.replace(
