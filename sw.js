@@ -1,7 +1,7 @@
-const CACHE_NAME = "money-rule-app-v47.42";
-const APP_SHELL = ["./", "./index.html", "./style.css?v=47.42", "./app.js?v=47.42", "./manifest.json"];
+const CACHE_NAME = "money-rule-app-v47.43";
+const APP_SHELL = ["./", "./index.html", "./style.css?v=47.43", "./app.js?v=47.43", "./manifest.json"];
 const TABLE_STYLE = `
-/* ver.47.42: edit modal delete button display fix */
+/* ver.47.43: edit modal delete button display fix */
 .expense-table{width:100%!important;table-layout:fixed!important;border-collapse:collapse!important;font-size:14px!important}
 .expense-table th,.expense-table td{font-size:14px!important;padding:10px 8px!important;border-bottom:1px solid #eee!important;text-align:left!important;vertical-align:middle!important}
 .expense-table th{font-size:12px!important;font-weight:600!important;color:#777!important;background:#f8f8f8!important}
@@ -71,9 +71,9 @@ self.addEventListener("fetch", event => {
     if (path.endsWith("/index.html") || path.endsWith("/")) {
       const text = await response.text();
       const patched = text
-        .replace(/style\.css\?v=47\.41/g, "style.css?v=47.42")
-        .replace(/app\.js\?v=47\.41/g, "app.js?v=47.42")
-        .replace(/ver\.47\.40/g, "ver.47.42")
+        .replace(/style\.css\?v=47\.41/g, "style.css?v=47.43")
+        .replace(/app\.js\?v=47\.41/g, "app.js?v=47.43")
+        .replace(/ver\.47\.40/g, "ver.47.43")
         .replace(/<\/head>/i, `<style id="ver4741-table-style">${TABLE_STYLE}</style><script id="ver4741-delete-script">${EDIT_MODAL_SCRIPT}</script>\n</head>`);
       output = new Response(patched, {status: response.status, statusText: response.statusText, headers: response.headers});
     }
