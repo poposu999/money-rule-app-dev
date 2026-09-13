@@ -1,7 +1,7 @@
-const CACHE_NAME = "money-rule-app-v47.43";
+const CACHE_NAME = "money-rule-app-v47.44";
 const APP_SHELL = ["./", "./index.html", "./style.css?v=47.43", "./app.js?v=47.43", "./manifest.json"];
 const TABLE_STYLE = `
-/* ver.47.43: edit modal delete button display fix */
+/* ver.47.44: edit modal delete button display fix */
 .expense-table{width:100%!important;table-layout:fixed!important;border-collapse:collapse!important;font-size:14px!important}
 .expense-table th,.expense-table td{font-size:14px!important;padding:10px 8px!important;border-bottom:1px solid #eee!important;text-align:left!important;vertical-align:middle!important}
 .expense-table th{font-size:12px!important;font-weight:600!important;color:#777!important;background:#f8f8f8!important}
@@ -40,12 +40,8 @@ const EDIT_MODAL_SCRIPT = `
     btn.className='edit-modal-delete-btn';
     btn.textContent='削除';
     btn.addEventListener('click',function(){
-      let target=null;
-      if(modal.id.toLowerCase().includes('fixed')) target=document.querySelector('.expense-table [data-delete-fixed="'+CSS.escape(String(id))+'"]');
-      else if(modal.id.toLowerCase().includes('planned')) target=document.querySelector('.expense-table [data-delete-planned="'+CSS.escape(String(id))+'"]');
-      else target=document.querySelector('.expense-table [data-delete="'+CSS.escape(String(id))+'"]');
-      if(target) target.click();
-      else modal.classList.add('hidden');
+      const confirmModal=document.getElementById('deleteConfirmModal');
+      if(confirmModal) confirmModal.classList.remove('hidden');
     });
     const box=modal.querySelector('.modal-box')||modal;
     const actions=box.querySelector('.modal-actions');
@@ -56,8 +52,8 @@ const EDIT_MODAL_SCRIPT = `
   const observer=new MutationObserver(scan);
   observer.observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['class','data-id']});
   scan();
-})();
-`;
+})();`
+
 self.addEventListener("install", event => { event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", event => { event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key)))).then(() => self.clients.claim())); });
 self.addEventListener("fetch", event => {
@@ -73,7 +69,7 @@ self.addEventListener("fetch", event => {
       const patched = text
         .replace(/style\.css\?v=47\.41/g, "style.css?v=47.43")
         .replace(/app\.js\?v=47\.41/g, "app.js?v=47.43")
-        .replace(/ver\.47\.40/g, "ver.47.43")
+        .replace(/ver\.47\.40/g, "ver.47.44")
         .replace(/<\/head>/i, `<style id="ver4741-table-style">${TABLE_STYLE}</style><script id="ver4741-delete-script">${EDIT_MODAL_SCRIPT}</script>\n</head>`);
       output = new Response(patched, {status: response.status, statusText: response.statusText, headers: response.headers});
     }
