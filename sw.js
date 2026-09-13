@@ -1,7 +1,7 @@
-const CACHE_NAME = "money-rule-app-v47.46";
-const APP_SHELL = ["./", "./index.html", "./style.css?v=47.46", "./app.js?v=47.46", "./manifest.json"];
+const CACHE_NAME = "money-rule-app-v47.47";
+const APP_SHELL = ["./", "./index.html", "./style.css?v=47.47", "./app.js?v=47.47", "./manifest.json"];
 const TABLE_STYLE = `
-/* ver.47.46: edit modal delete button display fix */
+/* ver.47.47: edit modal button layout */
 .expense-table{width:100%!important;table-layout:fixed!important;border-collapse:collapse!important;font-size:14px!important}
 .expense-table th,.expense-table td{font-size:14px!important;padding:10px 8px!important;border-bottom:1px solid #eee!important;text-align:left!important;vertical-align:middle!important}
 .expense-table th{font-size:12px!important;font-weight:600!important;color:#777!important;background:#f8f8f8!important}
@@ -26,34 +26,16 @@ const TABLE_STYLE = `
 }
 .expense-table .delete-btn{display:none!important}
 .modal-box{box-sizing:border-box!important;max-height:calc(100vh - 32px)!important;overflow-y:auto!important;overflow-x:hidden!important}
-.edit-modal-delete-btn{display:block!important;width:100%!important;box-sizing:border-box!important;margin:12px 0 0!important;padding:9px 12px!important;border:1px solid #ddd!important;border-radius:8px!important;background:#fff!important;color:#c44!important;font-size:14px!important;cursor:pointer!important}
+#editModal .modal-actions{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:8px!important}
+#editModal .modal-actions #rollbackToPlanned{grid-column:1/-1!important;order:1!important;width:100%!important}
+#editModal .modal-actions #deleteEditExpense{order:2!important;width:100%!important;margin:0!important}
+#editModal .modal-actions #cancelEdit{order:3!important;width:100%!important;margin:0!important}
+#editModal .modal-actions #saveEdit{order:4!important;width:100%!important;margin:0!important}
+.edit-modal-delete-btn{box-sizing:border-box!important;padding:9px 12px!important;border:1px solid #ddd!important;border-radius:8px!important;background:#fff!important;color:#c44!important;font-size:14px!important;cursor:pointer!important}
 `;
 const EDIT_MODAL_SCRIPT = `
-(function(){
-  function setupDeleteButton(modal){
-    if(!modal || !modal.id || !/editModal$/i.test(modal.id)) return;
-    if(modal.querySelector('.edit-modal-delete-btn')) return;
-    const id=modal.dataset.id;
-    if(!id) return;
-    const btn=document.createElement('button');
-    btn.type='button';
-    btn.className='edit-modal-delete-btn';
-    btn.textContent='削除';
-    btn.addEventListener('click',function(){
-      const confirmModal=document.getElementById('deleteConfirmModal');
-      if(confirmModal) confirmModal.classList.remove('hidden');
-    });
-    const box=modal.querySelector('.modal-box')||modal;
-    const actions=box.querySelector('.modal-actions');
-    if(actions) box.insertBefore(btn,actions);
-    else box.appendChild(btn);
-  }
-  function scan(){document.querySelectorAll('[id$="EditModal" i]').forEach(setupDeleteButton);}
-  const observer=new MutationObserver(scan);
-  observer.observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['class','data-id']});
-  scan();
-})();`
-
+(function(){})();
+`;
 self.addEventListener("install", event => { event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", event => { event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key)))).then(() => self.clients.claim())); });
 self.addEventListener("fetch", event => {
@@ -67,10 +49,11 @@ self.addEventListener("fetch", event => {
     if (path.endsWith("/index.html") || path.endsWith("/")) {
       const text = await response.text();
       const patched = text
-        .replace(/style\.css\?v=47\.41/g, "style.css?v=47.46")
-        .replace(/app\.js\?v=47\.41/g, "app.js?v=47.46")
-        .replace(/ver\.47\.40/g, "ver.47.46")
-        .replace(/<\/head>/i, `<style id="ver4741-table-style">${TABLE_STYLE}</style><script id="ver4741-delete-script">${EDIT_MODAL_SCRIPT}</script>\n</head>`);
+        .replace(/style\\.css\\?v=47\\.45/g, "style.css?v=47.47")
+        .replace(/app\\.js\\?v=47\\.45/g, "app.js?v=47.47")
+        .replace(/ver\\.47\\.45/g, "ver.47.47")
+        .replace(/変更を保存/g, "保存")
+        .replace(/<\\/head>/i, `<style id="ver4747-table-style">${TABLE_STYLE}</style><script id="ver4747-delete-script">${EDIT_MODAL_SCRIPT}</script>\\n</head>`);
       output = new Response(patched, {status: response.status, statusText: response.statusText, headers: response.headers});
     }
     const copy = output.clone(); caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy)); return output;
