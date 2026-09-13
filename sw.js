@@ -1,37 +1,14 @@
-const CACHE_NAME = "money-rule-app-v47.47";
-const APP_SHELL = ["./", "./index.html", "./style.css?v=47.47", "./app.js?v=47.47", "./manifest.json"];
+const CACHE_NAME = "money-rule-app-v47.48";
+const APP_SHELL = ["./", "./index.html", "./style.css?v=47.48", "./app.js?v=47.48", "./manifest.json"];
 const TABLE_STYLE = `
-/* ver.47.47: edit modal button layout */
-.expense-table{width:100%!important;table-layout:fixed!important;border-collapse:collapse!important;font-size:14px!important}
-.expense-table th,.expense-table td{font-size:14px!important;padding:10px 8px!important;border-bottom:1px solid #eee!important;text-align:left!important;vertical-align:middle!important}
-.expense-table th{font-size:12px!important;font-weight:600!important;color:#777!important;background:#f8f8f8!important}
-.expense-table .amount-col{text-align:right!important;padding-right:5px!important}
-.expense-table .action-col{text-align:right!important}
-.expense-table .confirm-btn,.expense-table .fixed-paid,.expense-table .edit-btn,.expense-table .delete-btn{box-sizing:border-box!important;min-height:0!important}
-@media(max-width:600px){
- .expense-table{width:100%!important;min-width:0!important;table-layout:fixed!important;font-size:10px!important}
- .expense-table th,.expense-table td{font-size:10px!important;padding:3px 2px!important;line-height:1.05!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}
- .expense-table th{font-size:10px!important;font-weight:600!important;background:#f8f8f8!important;color:#777!important}
- .expense-table th:nth-child(1),.expense-table td:nth-child(1){width:9%!important;min-width:0!important}
- .expense-table th:nth-child(2),.expense-table td:nth-child(2){width:39%!important;min-width:0!important}
- .expense-table th:nth-child(3),.expense-table td:nth-child(3){width:14%!important;min-width:0!important}
- .expense-table th:nth-child(4),.expense-table td:nth-child(4){width:18%!important;min-width:0!important}
- .expense-table th:nth-child(5),.expense-table td:nth-child(5){width:20%!important;min-width:0!important}
- .expense-table .amount-col{white-space:nowrap!important;text-align:right!important;padding-right:5px!important}
- .expense-table .amount-col strong{font-weight:400!important;white-space:nowrap!important}
- .expense-table .action-col{white-space:nowrap!important;text-align:right!important}
- .expense-table .action-col .expense-actions,.expense-table .action-col .edit-delete-buttons{display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:2px!important;flex-wrap:nowrap!important;white-space:nowrap!important}
- .expense-table .action-col button{margin:0!important;padding:3px 3px!important;font-size:8px!important;line-height:1.05!important;min-width:0!important;white-space:nowrap!important}
- .expense-table .confirm-btn,.expense-table .fixed-paid,.expense-table .edit-btn,.expense-table .delete-btn{font-size:8px!important;padding:3px 3px!important;margin-left:2px!important}
-}
-.expense-table .delete-btn{display:none!important}
-.modal-box{box-sizing:border-box!important;max-height:calc(100vh - 32px)!important;overflow-y:auto!important;overflow-x:hidden!important}
-#editModal .modal-actions{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:8px!important}
-#editModal .modal-actions #rollbackToPlanned{grid-column:1/-1!important;order:1!important;width:100%!important}
-#editModal .modal-actions #deleteEditExpense{order:2!important;width:100%!important;margin:0!important}
-#editModal .modal-actions #cancelEdit{order:3!important;width:100%!important;margin:0!important}
-#editModal .modal-actions #saveEdit{order:4!important;width:100%!important;margin:0!important}
-.edit-modal-delete-btn{box-sizing:border-box!important;padding:9px 12px!important;border:1px solid #ddd!important;border-radius:8px!important;background:#fff!important;color:#c44!important;font-size:14px!important;cursor:pointer!important}
+/* ver.47.48: forecast box styling */
+.forecast-box{background:#f8f8f8!important;border-radius:10px!important;padding:11px 12px!important}
+.forecast-label{font-size:12px!important}
+.forecast-box strong{font-size:20px!important;margin-top:3px!important}
+.forecast-status{margin-top:6px!important;font-size:12px!important;font-weight:600!important}
+.forecast-status.good{color:#18794e!important}
+.forecast-status.danger{color:#b42318!important}
+.forecast-status.neutral{color:#6b7280!important}
 `;
 const EDIT_MODAL_SCRIPT = `
 (function(){});
@@ -49,11 +26,15 @@ self.addEventListener("fetch", event => {
     if (path.endsWith("/index.html") || path.endsWith("/")) {
       const text = await response.text();
       const patched = text
-        .replace(/style\.css\?v=47\.45/g, "style.css?v=47.47")
-        .replace(/app\.js\?v=47\.45/g, "app.js?v=47.47")
-        .replace(/ver\.47\.45/g, "ver.47.47")
+        .replace(/style\.css\?v=47\.45/g, "style.css?v=47.48")
+        .replace(/style\.css\?v=47\.47/g, "style.css?v=47.48")
+        .replace(/app\.js\?v=47\.45/g, "app.js?v=47.48")
+        .replace(/app\.js\?v=47\.47/g, "app.js?v=47.48")
+        .replace(/ver\.47\.45/g, "ver.47.48")
+        .replace(/ver\.47\.46/g, "ver.47.48")
+        .replace(/ver\.47\.47/g, "ver.47.48")
         .replace(/変更を保存/g, "保存")
-        .replace(/<\/head>/i, `<style id="ver4747-table-style">${TABLE_STYLE}</style><script id="ver4747-delete-script">${EDIT_MODAL_SCRIPT}</script>\n</head>`);
+        .replace(/<\/head>/i, `<style id="ver4748-table-style">${TABLE_STYLE}</style><script id="ver4748-delete-script">${EDIT_MODAL_SCRIPT}</script>\n</head>`);
       output = new Response(patched, {status: response.status, statusText: response.statusText, headers: response.headers});
     }
     const copy = output.clone(); caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy)); return output;
