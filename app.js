@@ -1,5 +1,28 @@
 const KEY="moneyRuleAppV2";
-const VERSION="47.42";
+const VERSION="47.43";
+// Expense deletion flow: edit modal -> final confirmation modal -> delete
+function setupExpenseDeleteFlow(){
+  const editDelete=document.getElementById("deleteEditExpense");
+  const confirmModal=document.getElementById("deleteConfirmModal");
+  const confirmBtn=document.getElementById("confirmDeleteExpense");
+  const cancelBtn=document.getElementById("cancelDeleteConfirm");
+  const closeBtn=document.getElementById("closeDeleteConfirm");
+  if(!editDelete||!confirmModal||!confirmBtn) return;
+  const closeConfirm=()=>confirmModal.classList.add("hidden");
+  editDelete.addEventListener("click",()=>{confirmModal.classList.remove("hidden");});
+  [cancelBtn,closeBtn].forEach(b=>b&&b.addEventListener("click",closeConfirm));
+  confirmBtn.addEventListener("click",()=>{
+    if(typeof editingExpenseIndex!=="number") return;
+    if(!confirm("この支出を削除しますか？")) return;
+    expenses.splice(editingExpenseIndex,1);
+    saveData();
+    closeConfirm();
+    const editModal=document.getElementById("editModal");
+    if(editModal) editModal.classList.add("hidden");
+    render();
+  });
+}
+
 const CATEGORIES=["食費","日用品","水光熱費","交通費","美容","医療関係","娯楽","外食","その他"];
 const defaultState={settings:{minimumTakeHome:200000,fixedCosts:150000,savingsTarget:50000,extraAllowancePercent:60,extraSavingsPercent:40},income:250000,bonus:0,expenses:[],plannedExpenses:[],fixedExpenses:[],memory:{expenseCategory:"食費",plannedCategory:"食費",plannedMemo:"",plannedDate:"",fixedCategory:"住居費",fixedMemo:"",fixedDay:""}};
 let state;
