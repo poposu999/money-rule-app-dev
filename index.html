@@ -248,14 +248,15 @@
     <div class="modal-reorder"><span>同じ日付内の並び順</span><div><button id="moveEditUp" type="button" class="secondary-btn">▲ 上へ</button><button id="moveEditDown" type="button" class="secondary-btn">▼ 下へ</button></div></div>
     <div class="modal-actions"><button id="deleteEditExpense" type="button" class="edit-modal-delete-btn">削除</button><button id="rollbackToPlanned" type="button" class="secondary-btn">今月の予定支出に移動</button><button id="cancelEdit" class="secondary-btn">キャンセル</button><button id="saveEdit">変更を保存</button></div>
   </div>
+</div>
 <div id="deleteConfirmModal" class="modal hidden"><div class="modal-box"><div class="modal-header"><h2>削除の最終確認</h2><button id="closeDeleteConfirm" class="close-btn" type="button">×</button></div><p>この支出を削除しますか？</p><div class="modal-actions"><button id="cancelDeleteConfirm" type="button" class="secondary-btn">キャンセル</button><button id="confirmDeleteExpense" type="button" class="danger-btn">削除する</button></div></div></div>
 <div id="memoPopup" class="memo-popup hidden" role="status"></div>
 <div id="inputValidation" class="validation-warning hidden"></div>
 <footer class="app-footer">
-<h1>家計簿 <span class="app-version">ver.47.45</span></h1>
+<h1>家計簿 <span class="app-version">ver.47.46</span></h1>
 <p>収入・固定費・貯金を先に整理して、今月使える金額を自動計算。</p>
 </footer></main>
-<script src="app.js?v=47.45"></script>
+<script src="app.js?v=47.46"></script>
 <script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));}</script>
 </body>
 </html>
