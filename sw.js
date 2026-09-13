@@ -1,18 +1,18 @@
-const CACHE_NAME = "money-rule-app-v47.72";
-const APP_SHELL = ["./","./index.html","./style.css?v=47.72","./app.js?v=47.72","./manifest.json"];
+const CACHE_NAME = "money-rule-app-v47.74";
+const APP_SHELL = ["./","./index.html","./style.css?v=47.74","./app.js?v=47.74","./manifest.json"];
 
 function patchIndexResponse(response) {
   return response.text().then(html => {
-    html = html.replace(/ver\.47\.(68|69|70|71)/g, "ver.47.72");
-    html = html.replace(/style\.css\?v=47\.(68|69|70|71)/g, "style.css?v=47.72");
-    html = html.replace(/app\.js\?v=47\.(68|69|70|71)/g, "app.js?v=47.72");
+    html = html.replace(/ver\.47\.(68|69|70|71|72|73)/g, "ver.47.74");
+    html = html.replace(/style\.css\?v=47\.(68|69|70|71|72|73)/g, "style.css?v=47.74");
+    html = html.replace(/app\.js\?v=47\.(68|69|70|71|72|73)/g, "app.js?v=47.74");
     html = html.replace(
       '<p>この支出を削除しますか？</p>',
       '<p id="deleteConfirmMessage">この支出を削除しますか？</p>'
     );
     html = html.replace(
       '</head>',
-      `<style id="ver47-72-table-restore">
+      `<style id="ver47-74-table-restore">
 @media(max-width:600px){
   .expense-table{width:100%!important;min-width:0!important;table-layout:fixed!important}
   .expense-table th:nth-child(1),.expense-table td:nth-child(1){width:9%!important;min-width:0!important}
