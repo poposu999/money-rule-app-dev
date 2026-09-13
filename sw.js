@@ -1,18 +1,18 @@
-const CACHE_NAME = "money-rule-app-v47.74";
-const APP_SHELL = ["./","./index.html","./style.css?v=47.74","./app.js?v=47.74","./manifest.json"];
+const CACHE_NAME = "money-rule-app-v47.75";
+const APP_SHELL = ["./","./index.html","./style.css?v=47.75","./app.js?v=47.75","./manifest.json"];
 
 function patchIndexResponse(response) {
   return response.text().then(html => {
-    html = html.replace(/ver\.47\.(68|69|70|71|72|73)/g, "ver.47.74");
-    html = html.replace(/style\.css\?v=47\.(68|69|70|71|72|73)/g, "style.css?v=47.74");
-    html = html.replace(/app\.js\?v=47\.(68|69|70|71|72|73)/g, "app.js?v=47.74");
+    html = html.replace(/ver\.47\.(68|69|70|71|72|73|74)/g, "ver.47.75");
+    html = html.replace(/style\.css\?v=47\.(68|69|70|71|72|73|74)/g, "style.css?v=47.75");
+    html = html.replace(/app\.js\?v=47\.(68|69|70|71|72|73|74)/g, "app.js?v=47.75");
     html = html.replace(
       '<p>この支出を削除しますか？</p>',
       '<p id="deleteConfirmMessage">この支出を削除しますか？</p>'
     );
     html = html.replace(
       '</head>',
-      `<style id="ver47-74-table-restore">
+      `<style id="ver47-75-table-restore">
 @media(max-width:600px){
   .expense-table{width:100%!important;min-width:0!important;table-layout:fixed!important}
   .expense-table th:nth-child(1),.expense-table td:nth-child(1){width:9%!important;min-width:0!important}
@@ -20,6 +20,22 @@ function patchIndexResponse(response) {
   .expense-table th:nth-child(3),.expense-table td:nth-child(3){width:14%!important;min-width:0!important}
   .expense-table th:nth-child(4),.expense-table td:nth-child(4){width:18%!important;min-width:0!important}
   .expense-table th:nth-child(5),.expense-table td:nth-child(5){width:22%!important;min-width:0!important}
+}
+.expense-table .confirm-btn,.expense-table .fixed-paid{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  box-sizing:border-box!important;
+  flex:0 0 auto!important;
+  min-width:5.8em!important;
+  height:auto!important;
+  min-height:30px!important;
+  margin:0 0 0 5px!important;
+  padding:5px 7px!important;
+  font-size:11px!important;
+  line-height:1.25!important;
+  white-space:nowrap!important;
+  overflow:visible!important;
 }
 </style></head>`
     );
