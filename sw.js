@@ -1,7 +1,7 @@
-const CACHE_NAME = "money-rule-app-v47.39";
-const APP_SHELL = ["./", "./index.html", "./style.css?v=47.39", "./app.js?v=47.39", "./manifest.json"];
+const CACHE_NAME = "money-rule-app-v47.40";
+const APP_SHELL = ["./", "./index.html", "./style.css?v=47.40", "./app.js?v=47.40", "./manifest.json"];
 const TABLE_STYLE = `
-/* ver.47.39: table column width adjustment */
+/* ver.47.40: edit modal delete button layout */
 .expense-table{width:100%!important;table-layout:fixed!important;border-collapse:collapse!important;font-size:14px!important}
 .expense-table th,.expense-table td{font-size:14px!important;padding:10px 8px!important;border-bottom:1px solid #eee!important;text-align:left!important;vertical-align:middle!important}
 .expense-table th{font-size:12px!important;font-weight:600!important;color:#777!important;background:#f8f8f8!important}
@@ -25,7 +25,8 @@ const TABLE_STYLE = `
  .expense-table .confirm-btn,.expense-table .fixed-paid,.expense-table .edit-btn,.expense-table .delete-btn{font-size:8px!important;padding:3px 3px!important;margin-left:2px!important}
 }
 .expense-table .delete-btn{display:none!important}
-.edit-modal-delete-btn{display:block!important;width:100%!important;margin-top:10px!important;padding:9px 12px!important;border:1px solid #ddd!important;border-radius:8px!important;background:#fff!important;color:#c44!important;font-size:14px!important;cursor:pointer!important}
+.modal-box{box-sizing:border-box!important;max-height:calc(100vh - 32px)!important;overflow-y:auto!important;overflow-x:hidden!important}
+.edit-modal-delete-btn{display:block!important;width:100%!important;box-sizing:border-box!important;margin:12px 0 0!important;padding:9px 12px!important;border:1px solid #ddd!important;border-radius:8px!important;background:#fff!important;color:#c44!important;font-size:14px!important;cursor:pointer!important}
 `;
 const EDIT_MODAL_SCRIPT = `
 (function(){
@@ -46,7 +47,10 @@ const EDIT_MODAL_SCRIPT = `
       if(target) target.click();
       else modal.classList.add('hidden');
     });
-    modal.appendChild(btn);
+    const box=modal.querySelector('.modal-box')||modal;
+    const actions=box.querySelector('.modal-actions');
+    if(actions) box.insertBefore(btn,actions);
+    else box.appendChild(btn);
   }
   function scan(){document.querySelectorAll('[id$="EditModal"]').forEach(setupDeleteButton);}
   const observer=new MutationObserver(scan);
@@ -67,10 +71,10 @@ self.addEventListener("fetch", event => {
     if (path.endsWith("/index.html") || path.endsWith("/")) {
       const text = await response.text();
       const patched = text
-        .replace(/style\.css\?v=47\.34/g, "style.css?v=47.39")
-        .replace(/app\.js\?v=47\.34/g, "app.js?v=47.39")
-        .replace(/ver\.47\.34/g, "ver.47.39")
-        .replace(/<\/head>/i, `<style id="ver4739-table-style">${TABLE_STYLE}</style><script id="ver4739-delete-script">${EDIT_MODAL_SCRIPT}</script>\n</head>`);
+        .replace(/style\.css\?v=47\.34/g, "style.css?v=47.40")
+        .replace(/app\.js\?v=47\.34/g, "app.js?v=47.40")
+        .replace(/ver\.47\.39/g, "ver.47.40")
+        .replace(/<\/head>/i, `<style id="ver4740-table-style">${TABLE_STYLE}</style><script id="ver4740-delete-script">${EDIT_MODAL_SCRIPT}</script>\n</head>`);
       output = new Response(patched, {status: response.status, statusText: response.statusText, headers: response.headers});
     }
     const copy = output.clone(); caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy)); return output;
