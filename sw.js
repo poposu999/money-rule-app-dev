@@ -1,5 +1,39 @@
-const CACHE_NAME = "money-rule-app-v47.68";
-const APP_SHELL = ["./","./index.html","./style.css?v=47.68","./app.js?v=47.68","./manifest.json"];
+const CACHE_NAME = "money-rule-app-v47.69";
+const APP_SHELL = ["./","./index.html","./style.css?v=47.69","./app.js?v=47.69","./manifest.json"];
+
+function patchIndexResponse(response) {
+  return response.text().then(html => {
+    html = html.replace(/ver\.47\.68/g, "ver.47.69");
+    html = html.replace(/style\.css\?v=47\.68/g, "style.css?v=47.69");
+    html = html.replace(/app\.js\?v=47\.68/g, "app.js?v=47.69");
+    html = html.replace(
+      '<p>この支出を削除しますか？</p>',
+      '<p id="deleteConfirmMessage">この支出を削除しますか？</p>'
+    );
+    html = html.replace(
+      '</body>',
+      `<script>
+document.addEventListener("click", event => {
+  const button = event.target.closest("#deleteEditExpense");
+  if (!button) return;
+  const id = document.getElementById("editModal")?.dataset.id;
+  const expense = typeof state !== "undefined" && Array.isArray(state.expenses)
+    ? state.expenses.find(item => String(item.id) === String(id))
+    : null;
+  const message = document.getElementById("deleteConfirmMessage");
+  if (!message || !expense) return;
+  const amount = "¥" + Math.round(Number(expense.amount) || 0).toLocaleString("ja-JP");
+  message.textContent = (expense.category || "その他") + "　" + (expense.memo || "メモなし") + "　" + amount + " を削除しますか？";
+});
+</script></body>`
+    );
+    return new Response(html, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers
+    });
+  });
+}
 
 self.addEventListener("install", event => {
   event.waitUntil(
@@ -24,21 +58,22 @@ self.addEventListener("fetch", event => {
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
 
-  // Always check the network for the Service Worker itself and the app shell.
-  // Fall back to the cached version when offline.
   if (url.pathname.endsWith("/sw.js") || url.pathname.endsWith("/index.html") || url.pathname === "/") {
     event.respondWith(
       fetch(new Request(event.request, {cache:"no-store"}))
         .then(response => {
           if (!response || !response.ok) throw new Error("network response unavailable");
-          return response;
+          if (url.pathname.endsWith("/sw.js")) return response;
+          return patchIndexResponse(response);
         })
-        .catch(() => caches.match(event.request).then(cached => cached || caches.match("./index.html")))
+        .catch(() => caches.match(event.request).then(cached => {
+          if (!cached) return caches.match("./index.html").then(fallback => fallback ? patchIndexResponse(fallback) : Response.error());
+          return url.pathname.endsWith("/sw.js") ? cached : patchIndexResponse(cached);
+        }))
     );
     return;
   }
 
-  // Other assets: network first, cached fallback for offline use.
   event.respondWith(
     fetch(event.request)
       .then(response => {
