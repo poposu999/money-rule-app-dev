@@ -1,24 +1,18 @@
-const CACHE_NAME = "money-rule-app-v47.71";
-const APP_SHELL = ["./","./index.html","./style.css?v=47.71","./app.js?v=47.71","./manifest.json"];
+const CACHE_NAME = "money-rule-app-v47.72";
+const APP_SHELL = ["./","./index.html","./style.css?v=47.72","./app.js?v=47.72","./manifest.json"];
 
 function patchIndexResponse(response) {
   return response.text().then(html => {
-    html = html.replace(/ver\.47\.68/g, "ver.47.71");
-    html = html.replace(/ver\.47\.69/g, "ver.47.71");
-    html = html.replace(/ver\.47\.70/g, "ver.47.71");
-    html = html.replace(/style\.css\?v=47\.68/g, "style.css?v=47.71");
-    html = html.replace(/style\.css\?v=47\.69/g, "style.css?v=47.71");
-    html = html.replace(/style\.css\?v=47\.70/g, "style.css?v=47.71");
-    html = html.replace(/app\.js\?v=47\.68/g, "app.js?v=47.71");
-    html = html.replace(/app\.js\?v=47\.69/g, "app.js?v=47.71");
-    html = html.replace(/app\.js\?v=47\.70/g, "app.js?v=47.71");
+    html = html.replace(/ver\.47\.(68|69|70|71)/g, "ver.47.72");
+    html = html.replace(/style\.css\?v=47\.(68|69|70|71)/g, "style.css?v=47.72");
+    html = html.replace(/app\.js\?v=47\.(68|69|70|71)/g, "app.js?v=47.72");
     html = html.replace(
       '<p>この支出を削除しますか？</p>',
       '<p id="deleteConfirmMessage">この支出を削除しますか？</p>'
     );
     html = html.replace(
       '</head>',
-      `<style id="ver47-71-table-restore">
+      `<style id="ver47-72-table-restore">
 @media(max-width:600px){
   .expense-table{width:100%!important;min-width:0!important;table-layout:fixed!important}
   .expense-table th:nth-child(1),.expense-table td:nth-child(1){width:9%!important;min-width:0!important}
@@ -28,6 +22,37 @@ function patchIndexResponse(response) {
   .expense-table th:nth-child(5),.expense-table td:nth-child(5){width:22%!important;min-width:0!important}
 }
 </style></head>`
+    );
+    html = html.replace(
+      '<script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));}</script>',
+      `<script>
+if("serviceWorker" in navigator){
+  let reloading=false;
+  const updateServiceWorker=async()=>{
+    try{
+      const registration=await navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"});
+      await registration.update();
+      registration.addEventListener("updatefound",()=>{
+        const worker=registration.installing;
+        if(!worker)return;
+        worker.addEventListener("statechange",()=>{
+          if(worker.state==="installed"&&navigator.serviceWorker.controller){
+            worker.postMessage({type:"SKIP_WAITING"});
+          }
+        });
+      });
+    }catch(e){}
+  };
+  window.addEventListener("load",updateServiceWorker);
+  window.addEventListener("pageshow",updateServiceWorker);
+  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")updateServiceWorker();});
+  navigator.serviceWorker.addEventListener("controllerchange",()=>{
+    if(reloading)return;
+    reloading=true;
+    window.location.reload();
+  });
+}
+</script>`
     );
     html = html.replace(
       '</body>',
@@ -67,8 +92,6 @@ self.addEventListener("activate", event => {
     caches.keys()
       .then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))))
       .then(() => self.clients.claim())
-      .then(() => self.clients.matchAll({type:"window", includeUncontrolled:true}))
-      .then(clients => Promise.all(clients.map(client => client.navigate(client.url))))
   );
 });
 
