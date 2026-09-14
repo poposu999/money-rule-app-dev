@@ -14,7 +14,6 @@ button{margin-top:14px;border:0;border-radius:9px;padding:11px 16px;font-size:15
 .stat{margin:0;position:relative;padding-right:44px;}
 .stat span{display:block;color:#6b7280;font-size:13px;}
 .stat strong{display:block;margin-top:6px;font-size:22px;}
-.highlight{border:2px solid #202124;}
 .charts{display:grid;grid-template-columns:1fr 1fr;gap:0 12px;}
 .chart-card{min-width:0;border:1px solid #e5e7eb;background:#fff;border-radius:14px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.04);overflow:hidden;}
 .chart-card h2{margin-bottom:8px;}
@@ -78,6 +77,7 @@ h1{font-size:25px;}
 .stat-toggle-btn{position:absolute;right:10px;top:50%;transform:translateY(-50%);width:30px;height:30px;border:1px solid #d1d5db;border-radius:8px;background:#fff;font-size:20px;line-height:1;cursor:pointer;z-index:1;}
 .stat-hidden{display:none!important;}
 .income-restore{display:flex;justify-content:center;margin:2px 0 0;padding-top:2px;}
+.stats.card .income-restore{grid-column:1/-1;}
 .income-restore .secondary-btn{font-size:13px;padding:6px 10px;}
 .income-restore.hidden{display:none!important;}
 .expense-section-title{gap:12px;}
