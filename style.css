@@ -165,19 +165,27 @@ input,select,button{box-sizing:border-box;}
 .budget-daily-guide{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center;margin:4px 0 12px;padding:9px 11px;border-radius:10px;background:#f7f8fa;color:#6b7280;font-size:11px;}
 .budget-daily-guide strong{text-align:right;color:#202124;font-size:15px;}
 .budget-daily-guide small{font-size:10px;white-space:nowrap;}
-.budget-meter-head{display:flex;justify-content:space-between;align-items:end;gap:12px;margin-top:4px;font-size:12px;color:#6b7280;}
-.budget-meter-head strong{font-size:16px;color:#202124;}
-.budget-combined-meter{position:relative;height:58px;margin-top:6px;}
-.progress{height:14px;background:#e5e7eb;border-radius:999px;overflow:hidden;position:relative;}
-.progress>div{height:100%;width:0;background:#4b5563;border-radius:999px;transition:width .25s;}
-.budget-progress{position:absolute;left:0;right:0;top:0;}
-.progress-timeline-labels{position:absolute;left:0;right:0;top:23px;height:18px;font-size:10px;color:#6b7280;}
-.timeline-label{position:absolute;top:0;transform:translateX(-50%);white-space:nowrap;}
+.pace-compare{margin-top:6px;padding:12px;border:1px solid #e5e7eb;border-radius:12px;background:#fff;}
+.pace-compare-title{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:10px;}
+.pace-compare-title strong{font-size:14px;color:#202124;}
+.pace-compare-title span{font-size:10px;color:#8a8f98;}
+.pace-row+.pace-row{margin-top:10px;}
+.pace-row-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:5px;font-size:11px;color:#6b7280;}
+.pace-row-head strong{font-size:13px;color:#202124;}
+.pace-bar{height:12px;background:#e5e7eb;border-radius:999px;overflow:hidden;position:relative;width:100%;}
+.pace-bar>div{height:100%;width:0;border-radius:999px;transition:width .25s;}
+.pace-spending>div{background:#30343a;}
+.pace-calendar>div{background:#8b929c;}
+.pace-row-calendar{padding-bottom:23px;position:relative;}
+.progress-timeline-labels{position:absolute;left:0;right:0;bottom:0;height:16px;font-size:9px;color:#8a8f98;}
+.timeline-label{position:absolute;top:3px;transform:translateX(-50%);white-space:nowrap;}
 .timeline-label:first-child{transform:none;}
 .timeline-label:last-child{transform:translateX(-100%);}
-.progress-today-marker{position:absolute;top:-2px;width:18px;height:18px;border-radius:50%;background:#fff;border:3px solid #202124;box-sizing:border-box;transform:translateX(-50%);z-index:2;pointer-events:none;}
-.progress-today-label{position:absolute;top:41px;transform:translateX(-50%);padding:3px 7px;border-radius:6px;background:#374151;color:#fff;font-size:10px;font-weight:700;line-height:1.2;white-space:nowrap;pointer-events:none;}
-.budget-meter-meta{display:flex;justify-content:space-between;gap:12px;margin-top:1px;font-size:11px;color:#6b7280;}
+.pace-comparison{margin-top:4px;padding:7px 9px;border-radius:8px;text-align:center;font-size:11px;font-weight:700;}
+.pace-comparison.good{background:#eef7ee;color:#18794e;}
+.pace-comparison.warning{background:#fff7e6;color:#8a5a00;}
+.pace-comparison.neutral{background:#f3f4f6;color:#4b5563;}
+.budget-meter-meta{display:flex;justify-content:space-between;gap:12px;margin-top:8px;font-size:11px;color:#6b7280;}
 .budget-meter-meta strong{color:#4b5563;font-size:12px;}
 .budget-summary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));margin-top:12px;background:#f7f8fa;border-radius:12px;overflow:hidden;}
 .budget-summary-item{padding:12px;min-width:0;}
@@ -201,6 +209,12 @@ input,select,button{box-sizing:border-box;}
   .budget-daily-guide{grid-template-columns:auto 1fr;padding:8px 9px;gap:4px 8px;}
   .budget-daily-guide strong{font-size:14px;}
   .budget-daily-guide small{grid-column:2;text-align:right;font-size:9px;}
+  .pace-compare{padding:10px 9px;}
+  .pace-compare-title span{font-size:9px;}
+  .pace-row-head{font-size:10px;}
+  .pace-row-head strong{font-size:12px;}
+  .pace-bar{height:11px;}
+  .pace-comparison{font-size:10px;}
   .budget-meter-meta{font-size:10px;}
   .budget-meter-meta strong{font-size:11px;}
   .budget-summary-item{padding:10px 9px;}
