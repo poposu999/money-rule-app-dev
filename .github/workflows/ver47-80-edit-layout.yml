@@ -1,0 +1,148 @@
+name: Ver.47.80 edit layout update
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - '.github/workflows/ver47-80-edit-layout.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+
+      - name: Apply ver.47.80 changes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          OLD='47.79'
+          NEW='47.80'
+
+          def must_replace(text, old, new, label, count=None):
+              hits=text.count(old)
+              if hits==0:
+                  raise RuntimeError(f'Expected text not found: {label}')
+              if count is not None and hits!=count:
+                  raise RuntimeError(f'Unexpected occurrence count for {label}: {hits}')
+              return text.replace(old,new)
+
+          # index.html
+          p=Path('index.html')
+          html=p.read_text()
+          html=must_replace(html,OLD,NEW,'index version')
+
+          html=must_replace(
+              html,
+              '<div class="modal-actions"><button id="deleteFixedEditExpense" type="button" class="edit-modal-delete-btn">削除</button><button id="cancelFixedEdit" class="secondary-btn">キャンセル</button><button id="saveFixedEdit">保存</button></div>',
+              '<div class="modal-actions edit-footer-actions"><button id="deleteFixedEditExpense" type="button" class="edit-modal-delete-btn">削除</button><button id="cancelFixedEdit" class="secondary-btn">キャンセル</button><button id="saveFixedEdit">保存</button></div>',
+              'fixed edit footer',1)
+
+          html=must_replace(
+              html,
+              '<div class="modal-actions"><button id="deletePlannedEditExpense" type="button" class="edit-modal-delete-btn">削除</button><button id="cancelPlannedEdit" class="secondary-btn">キャンセル</button><button id="savePlannedEdit">保存</button></div>',
+              '<div class="modal-actions edit-footer-actions"><button id="deletePlannedEditExpense" type="button" class="edit-modal-delete-btn">削除</button><button id="cancelPlannedEdit" class="secondary-btn">キャンセル</button><button id="savePlannedEdit">保存</button></div>',
+              'planned edit footer',1)
+
+          html=must_replace(
+              html,
+              '<div class="edit-modal-danger-row"><button id="deleteEditExpense" type="button" class="edit-modal-delete-btn">削除</button></div><div class="modal-actions expense-edit-actions"><button id="rollbackToPlanned" type="button" class="secondary-btn">今月の予定支出に移動</button><button id="cancelEdit" class="secondary-btn">キャンセル</button><button id="saveEdit">保存</button></div>',
+              '<div class="edit-modal-special-action"><button id="rollbackToPlanned" type="button" class="secondary-btn">今月の予定支出に移動</button></div><div class="modal-actions edit-footer-actions"><button id="deleteEditExpense" type="button" class="edit-modal-delete-btn">削除</button><button id="cancelEdit" class="secondary-btn">キャンセル</button><button id="saveEdit">保存</button></div>',
+              'expense edit footer layout',1)
+          p.write_text(html)
+
+          # app.js
+          p=Path('app.js')
+          app=p.read_text()
+          app=must_replace(app,'const VERSION="47.79";','const VERSION="47.80";','app version',1)
+          p.write_text(app)
+
+          # style.css
+          p=Path('style.css')
+          css=p.read_text()
+          css=must_replace(
+              css,
+              '.edit-modal-delete-btn{margin-right:auto!important;background:#fff0f0;color:#b42318;border:1px solid #efb4b4;}\n.edit-modal-danger-row{display:flex;justify-content:center;margin:4px 0 10px;}\n.edit-modal-danger-row .edit-modal-delete-btn{margin:0!important;min-width:88px;}\n.expense-edit-actions{align-items:center;flex-wrap:nowrap;}\n.expense-edit-actions #rollbackToPlanned{white-space:nowrap;}\n',
+              '.edit-modal-delete-btn{background:#fff0f0;color:#b42318;border:1px solid #efb4b4;}\n.edit-modal-special-action{display:flex;margin:4px 0 10px;}\n.edit-modal-special-action button{width:100%;margin:0;}\n.edit-footer-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}\n.edit-footer-actions button{width:100%;margin:0;}\n',
+              'edit modal layout styles',1)
+
+          css=must_replace(
+              css,
+              '@media(max-width:600px){\n  .expense-edit-actions{gap:5px;}\n  .expense-edit-actions button{padding:8px 8px;font-size:11px;white-space:nowrap;}\n  .expense-edit-actions #rollbackToPlanned{flex:1 1 auto;min-width:0;}\n}\n',
+              '@media(max-width:600px){\n  .edit-footer-actions{gap:5px;}\n  .edit-footer-actions button{padding:8px 8px;font-size:11px;white-space:nowrap;}\n  .edit-modal-special-action button{padding:8px 10px;font-size:11px;white-space:nowrap;}\n}\n',
+              'mobile edit modal layout',1)
+
+          for legacy in ('edit-modal-danger-row','expense-edit-actions'):
+              if legacy in css:
+                  raise RuntimeError(f'Legacy CSS remains: {legacy}')
+          p.write_text(css)
+
+          # sw.js
+          p=Path('sw.js')
+          sw=p.read_text()
+          sw=must_replace(sw,OLD,NEW,'service worker version')
+          p.write_text(sw)
+
+          # README.md
+          Path('README.md').write_text(
+              '# 家計簿アプリ\n\n'
+              '## ver.47.80\n'
+              '- 3種類の編集ウィンドウ下部レイアウトを統一\n'
+              '- 通常支出では「今月の予定支出に移動」を独立行に配置\n'
+              '- その下に「削除 / キャンセル / 保存」を3列で統一\n'
+              '- 予定支出・固定費も「削除 / キャンセル / 保存」の同一レイアウトに統一\n'
+              '- 旧編集レイアウト用CSSを削除し、edit-footer-actions / edit-modal-special-action に整理\n'
+              '- index.html / app.js / sw.js / キャッシュ指定 / アプリ下部のバージョンを ver.47.80 に統一\n'
+          )
+          PY
+
+      - name: Remove one-time workflow
+        run: rm .github/workflows/ver47-80-edit-layout.yml
+
+      - name: Validate
+        run: |
+          node --check app.js
+          node --check sw.js
+          python - <<'PY'
+          from pathlib import Path
+          html=Path('index.html').read_text()
+          app=Path('app.js').read_text()
+          css=Path('style.css').read_text()
+          sw=Path('sw.js').read_text()
+          readme=Path('README.md').read_text()
+          assert 'ver.47.80' in html
+          assert 'style.css?v=47.80' in html
+          assert 'app.js?v=47.80' in html
+          assert 'const VERSION="47.80";' in app
+          assert 'money-rule-app-v47.80' in sw
+          assert '## ver.47.80' in readme
+          assert html.count('class="modal-actions edit-footer-actions"') == 3
+          assert html.count('class="edit-modal-special-action"') == 1
+          assert 'edit-modal-danger-row' not in html
+          assert 'expense-edit-actions' not in html
+          assert 'edit-modal-danger-row' not in css
+          assert 'expense-edit-actions' not in css
+          assert '.edit-footer-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}' in css
+          assert '.edit-modal-special-action button{width:100%;margin:0;}' in css
+          for path in Path('.').rglob('*'):
+              if path.is_file() and '.git' not in path.parts:
+                  text=path.read_text(errors='ignore')
+                  if '47.79' in text:
+                      raise AssertionError(f'Old version remains in {path}')
+          PY
+          git diff --check
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "ver.47.80: unify edit modal action layout"
+          git push origin develop
