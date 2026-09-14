@@ -1,0 +1,56 @@
+name: Ver.47.89 pace meter
+
+on:
+  push:
+    branches:
+      - develop
+    paths:
+      - '.github/workflows/ver47-89-pace.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+      - name: Apply update
+        run: python3 .ver47_89_update.py
+      - name: Validate update
+        run: |
+          node --check app.js
+          node --check sw.js
+          git diff --check
+          ! grep -q '47\.88' README.md app.js index.html sw.js
+          grep -q 'const VERSION="47.89"' app.js
+          grep -q 'ver.47.89' index.html
+          grep -q 'budgetLimitValue' index.html
+          grep -q 'todayMarker' index.html
+          grep -q 'todayLabel' index.html
+          grep -q 'renderPaceTimeline' app.js
+          ! grep -q 'monthProgressValue' index.html app.js
+          ! grep -q 'monthProgressBar' index.html app.js
+          ! grep -q 'pace-row-calendar' index.html style.css
+          ! grep -q 'pace-calendar' index.html style.css
+          ! grep -q 'renderProgressTimeline' app.js
+      - name: Commit final state
+        run: |
+          rm -f .ver47_89_update.py
+          rm -f .github/workflows/ver47-89-pace.yml
+          rmdir .github/workflows 2>/dev/null || true
+          rmdir .github 2>/dev/null || true
+          node --check app.js
+          node --check sw.js
+          git diff --check
+          test "$(find . -maxdepth 1 -type f -printf '%f\n' | sort | tr '\n' ' ')" = "README.md app.js index.html manifest.json style.css sw.js "
+          test ! -e .github
+          ! grep -q '47\.88' README.md app.js index.html sw.js
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "ver.47.89: unify spending pace meter"
+          git push origin develop
