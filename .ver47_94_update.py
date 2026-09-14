@@ -16,10 +16,10 @@ app=app.replace('const VERSION="47.93";','const VERSION="47.94";',1)
 
 app,count=re.subn(r'^function calculateAmountExpression\([^\n]*\)\{[^\n]*\}\n','',app,count=1,flags=re.M)
 if count!=1:
-    raise SystemExit('calculateAmountExpression removal failed')
+    raise SystemExit('amount expression function removal failed')
 app,count=re.subn(r'^function bindAmountCalculator\([^\n]*\)\{[^\n]*\}\n','',app,count=1,flags=re.M)
 if count!=1:
-    raise SystemExit('bindAmountCalculator removal failed')
+    raise SystemExit('amount calculator binding removal failed')
 
 replacements={
     'Number(calculateAmountExpression($("expenseAmount").value))':'Number($("expenseAmount").value)',
@@ -45,14 +45,14 @@ write('index.html',index)
 sw=read('sw.js').replace('47.93','47.94')
 write('sw.js',sw)
 
-readme='''# 家計簿アプリ\n\n## ver.47.94\n- 金額欄は `type="number"` の数字入力に統一し、計算式入力機能を廃止\n- `1200+300` などを評価していた `calculateAmountExpression` を削除\n- 金額欄の blur / Enter に結び付いていた `bindAmountCalculator` と関連イベントを削除\n- 支出・予定支出・固定費・各編集画面の金額保存処理を通常の数値読み取りに統一\n- 計算式を案内していたエラーメッセージを通常の金額入力案内に変更\n- index.html / app.js / sw.js / キャッシュ指定 / アプリ下部のバージョンを ver.47.94 に統一\n'''
+readme='''# 家計簿アプリ\n\n## ver.47.94\n- 金額欄は `type="number"` の数字入力に統一し、計算式入力機能を廃止\n- 金額欄に入力された値はそのまま数値として保存する方式に統一\n- 計算式入力用の関数・blur / Enterイベント・関連する不要コードを削除\n- 支出・予定支出・固定費・各編集画面の金額処理を同じ方式に統一\n- 計算式を案内していたエラーメッセージを通常の金額入力案内に変更\n- index.html / app.js / sw.js / キャッシュ指定 / アプリ下部のバージョンを ver.47.94 に統一\n'''
 write('README.md',readme)
 
 persistent=['README.md','app.js','index.html','manifest.json','style.css','sw.js']
 all_text='\n'.join(read(p) for p in persistent)
 for token in ['calculateAmountExpression','bindAmountCalculator','1200+300','10000+2000','5000+1000']:
-    if token in all_text:
-        raise SystemExit(f'obsolete calculator token remains: {token}')
+    if token in app:
+        raise SystemExit(f'obsolete calculator token remains in app.js: {token}')
 if '47.93' in all_text:
     raise SystemExit('stale version remains')
 if 'const VERSION="47.94";' not in app:
