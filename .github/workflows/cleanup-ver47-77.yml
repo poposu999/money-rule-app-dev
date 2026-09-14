@@ -1,0 +1,280 @@
+name: Cleanup ver.47.77
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - '.github/workflows/cleanup-ver47-77.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+
+      - name: Normalize source files
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          VERSION = "47.77"
+
+          # index.html
+          p = Path("index.html")
+          s = p.read_text()
+          s = re.sub(r"style\.css\?v=47\.\d+", f"style.css?v={VERSION}", s)
+          s = re.sub(r"app\.js\?v=47\.\d+", f"app.js?v={VERSION}", s)
+          s = re.sub(r'<span class="app-version">ver\.47\.\d+</span>', f'<span class="app-version">ver.{VERSION}</span>', s)
+          s = s.replace('<p>この支出を削除しますか？</p>', '<p id="deleteConfirmMessage">この支出を削除しますか？</p>')
+          s = re.sub(r'\n<style>\s*\.stats\.card,.charts\.card\{.*?</style>\s*(?=<script src=)', '\n', s, flags=re.S)
+          old = '<script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));}</script>'
+          new = '''<script>
+          if ("serviceWorker" in navigator) {
+            let reloading = false;
+            window.addEventListener("load", async () => {
+              try {
+                const registration = await navigator.serviceWorker.register("./sw.js", { updateViaCache: "none" });
+                await registration.update();
+              } catch (e) {}
+            });
+            navigator.serviceWorker.addEventListener("controllerchange", () => {
+              if (reloading) return;
+              reloading = true;
+              window.location.reload();
+            });
+          }
+          </script>'''
+          s = s.replace(old, new)
+          p.write_text(s)
+
+          # app.js
+          p = Path("app.js")
+          s = p.read_text()
+          s = re.sub(r'const VERSION="47\.\d+";', f'const VERSION="{VERSION}";', s)
+          s = s.replace('minimumTakeHome:200000,fixedCosts:150000,savingsTarget:50000', 'minimumTakeHome:200000,savingsTarget:50000')
+          s = s.replace(
+              'editDelete.addEventListener("click",()=>confirmModal.classList.remove("hidden"));',
+              '''editDelete.addEventListener("click",()=>{\n    const id=document.getElementById("editModal")?.dataset.id;\n    const expense=state.expenses.find(x=>String(x.id)===String(id));\n    const message=document.getElementById("deleteConfirmMessage");\n    if(message&&expense){\n      message.textContent=`${expense.category||"その他"}　${expense.memo||"メモなし"}　${yen(expense.amount)} を削除しますか？`;\n    }\n    confirmModal.classList.remove("hidden");\n  });'''
+          )
+          s = s.replace('function rememberPlannedInputs(){/* 予定支出の直前入力は記憶しない */}\n', '')
+          s = s.replace('rememberPlannedInputs();$("plannedAmount").value="";', '$("plannedAmount").value="";')
+          s = s.replace('function rememberFixedInputs(){/* 固定費の直前入力は記憶しない */}\n', '')
+          s = s.replace('$("fixedAmount").value="";rememberFixedInputs();save();', '$("fixedAmount").value="";save();')
+          p.write_text(s)
+
+          # style.css: merge exact duplicate selectors and remove all legacy table rules.
+          p = Path("style.css")
+          css = re.sub(r'/\*.*?\*/', '', p.read_text(), flags=re.S)
+          TABLE_TOKENS = ('.expense-table', '.planned-expense-table', '.fixed-expense-table', '.expense-table-wrap', '.expense-empty')
+
+          def split_nodes(text):
+              nodes = []
+              i = 0
+              while i < len(text):
+                  while i < len(text) and text[i].isspace():
+                      i += 1
+                  if i >= len(text):
+                      break
+                  a = text.find('{', i)
+                  if a < 0:
+                      break
+                  header = text[i:a].strip()
+                  depth = 1
+                  j = a + 1
+                  while j < len(text) and depth:
+                      if text[j] == '{': depth += 1
+                      elif text[j] == '}': depth -= 1
+                      j += 1
+                  if depth:
+                      raise RuntimeError(f"Unbalanced CSS near {header[:80]}")
+                  nodes.append((header, text[a+1:j-1].strip()))
+                  i = j
+              return nodes
+
+          def merge_declarations(bodies):
+              order, values = [], {}
+              for body in bodies:
+                  for part in body.split(';'):
+                      part = part.strip()
+                      if not part or ':' not in part:
+                          continue
+                      prop, value = part.split(':', 1)
+                      prop = prop.strip()
+                      if prop not in values:
+                          order.append(prop)
+                      values[prop] = value.strip()
+              return ';'.join(f'{k}:{values[k]}' for k in order) + (';' if order else '')
+
+          def clean_level(text):
+              out, positions = [], {}
+              for header, body in split_nodes(text):
+                  if header.lstrip().startswith('@media'):
+                      inner = clean_level(body)
+                      if inner.strip():
+                          out.append((header, inner, True))
+                      continue
+                  if any(token in header for token in TABLE_TOKENS):
+                      continue
+                  key = re.sub(r'\s+', ' ', header).strip()
+                  if key in positions:
+                      idx = positions[key]
+                      old_h, old_b, _ = out[idx]
+                      out[idx] = (old_h, merge_declarations([old_b, body]), False)
+                  else:
+                      positions[key] = len(out)
+                      out.append((header, body, False))
+              rendered = []
+              for header, body, media in out:
+                  if media:
+                      rendered.append(f'{header}{{\n{body}\n}}')
+                  else:
+                      rendered.append(f'{header}{{{merge_declarations([body])}}}')
+              return '\n'.join(rendered)
+
+          css = clean_level(css).strip()
+          canonical = '''
+
+          /* Shared dashboard cards */
+          .stats.card,.charts.card{display:grid;background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:16px;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,.04)}
+          .stats.card{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+          .charts.card{grid-template-columns:1fr 1fr;gap:0 12px}
+          .stats.card .section-title,.charts.card .section-title{margin-bottom:14px}
+          .forecast-status.good{color:#18794e;font-weight:600}
+          .forecast-status.danger{color:#b42318;font-weight:600}
+          .forecast-status.neutral{color:#6b7280}
+
+          /* Canonical expense table layout */
+          .expense-table-wrap{width:100%;overflow-x:auto}
+          .expense-table,.planned-expense-table,.fixed-expense-table{width:100%;min-width:0;table-layout:fixed;border-collapse:collapse;font-size:14px}
+          .expense-table th,.expense-table td,.planned-expense-table th,.planned-expense-table td,.fixed-expense-table th,.fixed-expense-table td{box-sizing:border-box;padding:10px 8px;border-bottom:1px solid #eee;vertical-align:middle;white-space:nowrap;text-align:left}
+          .expense-table th,.planned-expense-table th,.fixed-expense-table th{font-size:12px;color:#777;font-weight:600;background:#f8f8f8}
+          .expense-table th:nth-child(1),.expense-table td:nth-child(1),.planned-expense-table th:nth-child(1),.planned-expense-table td:nth-child(1),.fixed-expense-table th:nth-child(1),.fixed-expense-table td:nth-child(1){width:10%}
+          .expense-table th:nth-child(2),.expense-table td:nth-child(2),.planned-expense-table th:nth-child(2),.planned-expense-table td:nth-child(2),.fixed-expense-table th:nth-child(2),.fixed-expense-table td:nth-child(2){width:34%;white-space:normal;overflow-wrap:anywhere}
+          .expense-table th:nth-child(3),.expense-table td:nth-child(3),.planned-expense-table th:nth-child(3),.planned-expense-table td:nth-child(3),.fixed-expense-table th:nth-child(3),.fixed-expense-table td:nth-child(3){width:14%}
+          .expense-table th:nth-child(4),.expense-table td:nth-child(4),.planned-expense-table th:nth-child(4),.planned-expense-table td:nth-child(4),.fixed-expense-table th:nth-child(4),.fixed-expense-table td:nth-child(4){width:18%}
+          .expense-table th:nth-child(5),.expense-table td:nth-child(5),.planned-expense-table th:nth-child(5),.planned-expense-table td:nth-child(5),.fixed-expense-table th:nth-child(5),.fixed-expense-table td:nth-child(5){width:24%}
+          .expense-table .amount-col,.planned-expense-table .amount-col,.fixed-expense-table .amount-col{text-align:right;padding-right:8px}
+          .expense-table .action-col,.planned-expense-table .action-col,.fixed-expense-table .action-col{text-align:right;white-space:nowrap}
+          .expense-table .edit-delete-buttons,.expense-table .expense-actions,.planned-expense-table .edit-delete-buttons,.planned-expense-table .expense-actions,.fixed-expense-table .edit-delete-buttons,.fixed-expense-table .expense-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:nowrap;gap:4px}
+          .expense-table .confirm-btn,.expense-table .fixed-paid,.expense-table .edit-btn,.expense-table .delete-btn,.planned-expense-table .confirm-btn,.planned-expense-table .fixed-paid,.planned-expense-table .edit-btn,.planned-expense-table .delete-btn,.fixed-expense-table .confirm-btn,.fixed-expense-table .fixed-paid,.fixed-expense-table .edit-btn,.fixed-expense-table .delete-btn{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;width:auto;height:auto;min-height:30px;margin:0;padding:5px 7px;font-size:11px;line-height:1.25;border-radius:6px;white-space:nowrap;overflow:visible;flex:0 0 auto}
+          .expense-table .confirm-btn,.expense-table .fixed-paid,.planned-expense-table .confirm-btn,.planned-expense-table .fixed-paid,.fixed-expense-table .confirm-btn,.fixed-expense-table .fixed-paid{border:1px solid #c7cbd1;background:#f3f4f6;color:#222}
+          .planned-expense-table .confirm-btn:hover{background:#e8eaed}
+          .expense-empty{padding:12px 0}
+
+          @media(max-width:600px){
+            .stats.card,.charts.card{grid-template-columns:1fr}
+            .expense-table th,.expense-table td,.planned-expense-table th,.planned-expense-table td,.fixed-expense-table th,.fixed-expense-table td{padding:6px 4px;font-size:10px}
+            .expense-table .confirm-btn,.expense-table .fixed-paid,.expense-table .edit-btn,.expense-table .delete-btn,.planned-expense-table .confirm-btn,.planned-expense-table .fixed-paid,.planned-expense-table .edit-btn,.planned-expense-table .delete-btn,.fixed-expense-table .confirm-btn,.fixed-expense-table .fixed-paid,.fixed-expense-table .edit-btn,.fixed-expense-table .delete-btn{font-size:8px;padding:4px 3px;min-height:28px}
+          }
+          '''
+          canonical = re.sub(r'^          ', '', canonical, flags=re.M)
+          p.write_text(css + canonical.rstrip() + '\n')
+
+          # sw.js is now only responsible for caching and updates.
+          sw = f'''const CACHE_NAME = "money-rule-app-v{VERSION}";
+          const APP_SHELL = [
+            "./",
+            "./index.html",
+            "./style.css?v={VERSION}",
+            "./app.js?v={VERSION}",
+            "./manifest.json"
+          ];
+
+          self.addEventListener("install", event => {{
+            event.waitUntil(
+              caches.open(CACHE_NAME)
+                .then(cache => cache.addAll(APP_SHELL))
+                .then(() => self.skipWaiting())
+            );
+          }});
+
+          self.addEventListener("activate", event => {{
+            event.waitUntil(
+              caches.keys()
+                .then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))))
+                .then(() => self.clients.claim())
+            );
+          }});
+
+          self.addEventListener("fetch", event => {{
+            if (event.request.method !== "GET") return;
+            const url = new URL(event.request.url);
+            if (url.origin !== self.location.origin) return;
+            if (url.pathname.endsWith("/sw.js") || url.pathname.endsWith("/index.html") || url.pathname === "/") {{
+              event.respondWith(
+                fetch(new Request(event.request, {{ cache: "no-store" }}))
+                  .then(response => response && response.ok ? response : Promise.reject(new Error("network response unavailable")))
+                  .catch(() => caches.match(event.request).then(cached => cached || caches.match("./index.html")))
+              );
+              return;
+            }}
+            event.respondWith(
+              fetch(event.request)
+                .then(response => {{
+                  if (response && response.ok) {{
+                    const copy = response.clone();
+                    caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
+                  }}
+                  return response;
+                }})
+                .catch(() => caches.match(event.request))
+            );
+          }});
+          '''
+          Path('sw.js').write_text(re.sub(r'^          ', '', sw, flags=re.M).rstrip() + '\n')
+
+          readme = f'''# 家計簿アプリ
+
+          ## ver.{VERSION}
+          - バージョン表記を index.html / app.js / キャッシュ指定 / sw.js で統一
+          - Service Worker からHTML・CSSの動的書き換え処理を撤去
+          - 重複CSSと旧テーブル上書きルールを整理し、一覧テーブル定義を一本化
+          - 不要な一時デプロイファイルを削除
+          - 表示・家計簿機能は ver.47.76 の挙動を維持
+          '''
+          Path('README.md').write_text(re.sub(r'^          ', '', readme, flags=re.M).rstrip() + '\n')
+
+          trigger = Path('ver479-trigger.txt')
+          if trigger.exists():
+              trigger.unlink()
+          PY
+
+      - name: Validate
+        run: |
+          node --check app.js
+          node --check sw.js
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          version = '47.77'
+          html = Path('index.html').read_text()
+          app = Path('app.js').read_text()
+          sw = Path('sw.js').read_text()
+          css = Path('style.css').read_text()
+          json.loads(Path('manifest.json').read_text())
+          assert f'ver.{version}' in html
+          assert f'app.js?v={version}' in html
+          assert f'style.css?v={version}' in html
+          assert f'const VERSION="{version}"' in app
+          assert f'money-rule-app-v{version}' in sw
+          assert 'patchIndexResponse' not in sw
+          assert not Path('ver479-trigger.txt').exists()
+          assert css.count('Canonical expense table layout') == 1
+          print('validation ok')
+          PY
+
+      - name: Commit cleanup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/cleanup-ver47-77.yml
+          git add -A
+          git commit -m "ver.47.77: normalize versions and clean source"
+          git push origin develop
