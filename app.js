@@ -1,6 +1,8 @@
 const KEY="moneyRuleAppV2";
-const VERSION="47.91";
-// Deletion is available only from edit modals.
+const VERSION="47.92";
+const STORAGE_KEYS={state:KEY,sections:"moneyRuleSectionPrefs",stats:"moneyRuleStatPrefs"};
+function readStorage(key,fallback){try{const raw=localStorage.getItem(key);if(raw===null)return structuredClone(fallback);const value=JSON.parse(raw);return value&&typeof value==="object"?value:structuredClone(fallback);}catch{return structuredClone(fallback);}}
+function writeStorage(key,value){localStorage.setItem(key,JSON.stringify(value));}
 let pendingEditDelete=null;
 function setupEditDeleteFlow(){
   const confirmModal=$("deleteConfirmModal");
@@ -61,7 +63,7 @@ let state;
 let sessionExpenseDate="";
 const now=new Date();
 const today=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
-try{state=JSON.parse(localStorage.getItem(KEY)||JSON.stringify(defaultState));}catch(e){state=structuredClone(defaultState);}
+state=readStorage(STORAGE_KEYS.state,defaultState);
 state.settings={...defaultState.settings,...(state.settings||{})};
 state.memory={...defaultState.memory,...(state.memory||{})};
 delete state.memory.expenseDate;
@@ -70,7 +72,7 @@ state.expenses=(Array.isArray(state.expenses)?state.expenses:[]).filter(Boolean)
 state.plannedExpenses=(Array.isArray(state.plannedExpenses)?state.plannedExpenses:[]).filter(Boolean).map(e=>({...e,id:e.id||Date.now()+Math.random(),amount:Number(e.amount)||0,date:String(e.date||today),category:String(e.category||"その他"),memo:String(e.memo||""),order:Number.isFinite(Number(e.order))?Number(e.order):Number(e.id)||Date.now()}));
 state.fixedExpenses=(Array.isArray(state.fixedExpenses)?state.fixedExpenses:[]).filter(Boolean).map(e=>({...e,id:e.id||Date.now()+Math.random(),amount:Number(e.amount)||0,category:String(e.category||"その他"),memo:String(e.memo||""),day:Math.min(31,Math.max(1,Number(e.day)||1)),order:Number.isFinite(Number(e.order))?Number(e.order):Number(e.id)||Date.now(),paidMonths:Array.isArray(e.paidMonths)?e.paidMonths.map(String):[]}));
 const $=id=>document.getElementById(id); const yen=n=>"¥"+Math.round(Number(n)||0).toLocaleString("ja-JP");
-function save(){localStorage.setItem(KEY,JSON.stringify(state));}
+function save(){writeStorage(STORAGE_KEYS.state,state);}
 function monthKey(date=today){return String(date).slice(0,7);}
 function monthExpenses(key=monthKey()){return state.expenses.filter(e=>String(e.date||"").slice(0,7)===key);}
 function monthPlannedExpenses(key=monthKey()){return state.plannedExpenses.filter(e=>String(e.date||"").slice(0,7)===key);}
@@ -134,13 +136,13 @@ $("savePlannedEdit").onclick=()=>{const id=$("plannedEditModal").dataset.id,e=st
 function exportBackup(){const data={format:"money-rule-backup",version:VERSION,exportedAt:new Date().toISOString(),localStorage:{}};for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(key&&key.startsWith("moneyRule"))data.localStorage[key]=localStorage.getItem(key);}const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=`money-rule-backup-${today.replaceAll("-","")}.json`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);$("backupStatus").textContent="バックアップを書き出しました。";}
 function importBackupFile(file){if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const data=JSON.parse(reader.result);if(!data||data.format!=="money-rule-backup"||!data.localStorage||typeof data.localStorage!=="object")throw new Error();if(!confirm("バックアップを読み込むと現在の家計簿データが置き換わります。続行しますか？"))return;Object.keys(data.localStorage).filter(k=>k.startsWith("moneyRule")).forEach(k=>localStorage.setItem(k,String(data.localStorage[k])));location.reload();}catch(e){alert("バックアップファイルを読み込めませんでした。");}};reader.readAsText(file);}
 $("exportBackup").onclick=exportBackup;$("importBackupButton").onclick=()=>$("importBackup").click();$("importBackup").addEventListener("change",e=>{importBackupFile(e.target.files?.[0]);e.target.value="";});
-const sectionPrefs=JSON.parse(localStorage.getItem("moneyRuleSectionPrefs")||"{}"),statPrefs=JSON.parse(localStorage.getItem("moneyRuleStatPrefs")||"{}");
+const sectionPrefs=readStorage(STORAGE_KEYS.sections,{}),statPrefs=readStorage(STORAGE_KEYS.stats,{});
 function applyStatPrefs(){const hidden=statPrefs.income===true;["incomeStat","extraIncomeStat"].forEach(id=>$(id)?.classList.toggle("stat-hidden",hidden));const b=$("incomeRestore")?.querySelector("button");if(b)b.textContent=hidden?"前月の収入を表示":"前月の収入を非表示";}
 function applySectionPrefs(){document.querySelectorAll("[data-section-content]").forEach(section=>{const hidden=sectionPrefs[section.dataset.sectionContent]===true;section.querySelectorAll(":scope > *:not(.section-title)").forEach(child=>child.classList.toggle("section-body-hidden",hidden));});document.querySelectorAll(".minus-btn").forEach(btn=>{const hidden=sectionPrefs[btn.dataset.section]===true;btn.textContent=hidden?"＋":"−";});}
-function toggleSection(k){sectionPrefs[k]=sectionPrefs[k]!==true;localStorage.setItem("moneyRuleSectionPrefs",JSON.stringify(sectionPrefs));applySectionPrefs();}
+function toggleSection(k){sectionPrefs[k]=sectionPrefs[k]!==true;writeStorage(STORAGE_KEYS.sections,sectionPrefs);applySectionPrefs();}
 function showMemoPopup(cell,event){const text=cell.dataset.memo||"";if(!text)return;const popup=$("memoPopup");if(!popup)return;popup.textContent=text;popup.classList.remove("hidden");const rect=cell.getBoundingClientRect();const margin=8;popup.style.left="0px";popup.style.top="0px";const pw=Math.min(320,window.innerWidth-2*margin);popup.style.maxWidth=pw+"px";const pr=popup.getBoundingClientRect();let left=event.clientX-pr.width/2;left=Math.max(margin,Math.min(window.innerWidth-pr.width-margin,left));let top=rect.top-pr.height-8;if(top<margin)top=Math.min(window.innerHeight-pr.height-margin,rect.bottom+8);popup.style.left=left+"px";popup.style.top=Math.max(margin,top)+"px";clearTimeout(window.__memoPopupTimer);window.__memoPopupTimer=setTimeout(()=>popup.classList.add("hidden"),2000);}
 document.addEventListener("click",e=>{const cell=e.target.closest(".memo-cell");if(cell){showMemoPopup(cell,e);return;}if(!e.target.closest("#memoPopup"))$("memoPopup")?.classList.add("hidden");});
-document.addEventListener("click",e=>{const b=e.target.closest(".minus-btn");if(b){toggleSection(b.dataset.section);return;}const t=e.target.closest('.stat-toggle-btn[data-stat="income"]');if(t){statPrefs.income=true;localStorage.setItem("moneyRuleStatPrefs",JSON.stringify(statPrefs));applyStatPrefs();}});$("incomeToggle").onclick=()=>{statPrefs.income=!Boolean(statPrefs.income);localStorage.setItem("moneyRuleStatPrefs",JSON.stringify(statPrefs));applyStatPrefs();};
+document.addEventListener("click",e=>{const b=e.target.closest(".minus-btn");if(b)toggleSection(b.dataset.section);});$("incomeToggle").onclick=()=>{statPrefs.income=!Boolean(statPrefs.income);writeStorage(STORAGE_KEYS.stats,statPrefs);applyStatPrefs();};
 loadSettings();restoreInputMemory();document.querySelectorAll("[data-entry-tab]").forEach((t,i)=>t.setAttribute("aria-selected",i===0?"true":"false"));bindAmountCalculator("expenseAmount");bindAmountCalculator("plannedAmount");bindAmountCalculator("editAmount");bindAmountCalculator("plannedEditAmount");renderFixedExpenses();renderPlannedExpenses();renderExpenses();calc();applySectionPrefs();applyStatPrefs();requestAnimationFrame(()=>{const n=getNumbers();renderCategoryChart(n.es);renderDailyChart(n.es);renderMonthlyChart();renderSavingsChart();});
 
 setupEditDeleteFlow();
