@@ -74,11 +74,11 @@ h1{font-size:25px;}
 .modal-actions{display:flex;justify-content:flex-end;gap:8px;}
 .modal-actions button{margin:0;}
 .secondary-btn{background:#eee;color:#333;}
-.edit-modal-delete-btn{margin-right:auto!important;background:#fff0f0;color:#b42318;border:1px solid #efb4b4;}
-.edit-modal-danger-row{display:flex;justify-content:center;margin:4px 0 10px;}
-.edit-modal-danger-row .edit-modal-delete-btn{margin:0!important;min-width:88px;}
-.expense-edit-actions{align-items:center;flex-wrap:nowrap;}
-.expense-edit-actions #rollbackToPlanned{white-space:nowrap;}
+.edit-modal-delete-btn{background:#fff0f0;color:#b42318;border:1px solid #efb4b4;}
+.edit-modal-special-action{display:flex;margin:4px 0 10px;}
+.edit-modal-special-action button{width:100%;margin:0;}
+.edit-footer-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
+.edit-footer-actions button{width:100%;margin:0;}
 #deleteConfirmMessage{white-space:pre-line;line-height:1.65;}
 .danger-btn{background:#b42318;color:#fff;}
 .section-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;}
@@ -219,7 +219,7 @@ input[type="date"],#fixedDay{width:100%;max-width:100%;min-width:0;box-sizing:bo
 }
 
 @media(max-width:600px){
-  .expense-edit-actions{gap:5px;}
-  .expense-edit-actions button{padding:8px 8px;font-size:11px;white-space:nowrap;}
-  .expense-edit-actions #rollbackToPlanned{flex:1 1 auto;min-width:0;}
+  .edit-footer-actions{gap:5px;}
+  .edit-footer-actions button{padding:8px 8px;font-size:11px;white-space:nowrap;}
+  .edit-modal-special-action button{padding:8px 10px;font-size:11px;white-space:nowrap;}
 }
