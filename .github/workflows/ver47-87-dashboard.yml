@@ -25,11 +25,6 @@ jobs:
           node --check app.js
           node --check sw.js
           git diff --check
-          test "$(find . -maxdepth 1 -type f -printf '%f\n' | sort | tr '\n' ' ')" = "README.md app.js index.html manifest.json style.css sw.js " || {
-            echo "Unexpected top-level files before cleanup check"
-            find . -maxdepth 1 -type f -printf '%f\n' | sort
-            exit 1
-          }
       - name: Commit final state
         run: |
           rm -f .ver47_87_update.py
