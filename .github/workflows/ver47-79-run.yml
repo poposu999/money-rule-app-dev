@@ -1,0 +1,67 @@
+name: Ver.47.79 updater
+
+on:
+  push:
+    branches:
+      - develop
+    paths:
+      - .github/workflows/ver47-79-run.yml
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+      - name: Apply update
+        run: python ver47_79_update.py
+      - name: Remove temporary updater files
+        run: |
+          rm ver47_79_update.py
+          rm .github/workflows/ver47-79-run.yml
+      - name: Validate
+        run: |
+          node --check app.js
+          node --check sw.js
+          python - <<'PY'
+          from pathlib import Path
+          html=Path('index.html').read_text()
+          app=Path('app.js').read_text()
+          css=Path('style.css').read_text()
+          sw=Path('sw.js').read_text()
+          readme=Path('README.md').read_text()
+          assert 'ver.47.79' in html
+          assert 'style.css?v=47.79' in html
+          assert 'app.js?v=47.79' in html
+          assert 'const VERSION="47.79";' in app
+          assert 'money-rule-app-v47.79' in sw
+          assert '## ver.47.79' in readme
+          assert '変更を保存' not in html
+          assert 'class="edit-modal-danger-row"' in html
+          assert 'class="modal-actions expense-edit-actions"' in html
+          assert 'メモ：${memo}' in app
+          assert 'class="table-actions"' in app
+          assert 'edit-delete-buttons' not in app
+          assert 'edit-delete-buttons' not in css
+          assert 'expense-actions' not in css
+          assert 'min-height:18px' in css
+          assert '#deleteConfirmMessage{white-space:pre-line' in css
+          for path in Path('.').rglob('*'):
+              if path.is_file() and '.git' not in path.parts:
+                  text=path.read_text(errors='ignore')
+                  if '47.78' in text:
+                      raise AssertionError(f'Old version remains in {path}')
+          PY
+          git diff --check
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "ver.47.79: tighten tables and refine edit deletion UI"
+          git push origin develop
