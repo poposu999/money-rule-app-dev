@@ -1,0 +1,57 @@
+name: Ver.47.93 update
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - '.github/workflows/ver47-93.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+      - name: Apply update
+        run: python3 .ver47_93_update.py
+      - name: Validate JavaScript and diff
+        run: |
+          node --check app.js
+          node --check sw.js
+          git diff --check
+      - name: Validate update targets
+        run: |
+          ! grep -R -n '47\.92' README.md app.js index.html manifest.json style.css sw.js
+          ! grep -R -nE 'renderSavingsChart|savingsChart|savingsChartSummary|bar-chart-wrap' app.js index.html style.css
+          grep -n 'function getToday()' app.js
+          grep -n 'function refreshDateContext()' app.js
+          grep -n '<option value="">選択してください</option>' index.html
+      - name: Remove temporary automation files
+        run: |
+          rm -f .ver47_93_update.py .github/workflows/ver47-93.yml
+          rmdir .github/workflows 2>/dev/null || true
+          rmdir .github 2>/dev/null || true
+      - name: Validate final tree
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          expected={'README.md','app.js','index.html','manifest.json','style.css','sw.js'}
+          actual={p.name for p in Path('.').iterdir() if p.name != '.git'}
+          if actual != expected:
+              raise SystemExit(f'final top-level tree mismatch: {sorted(actual)}')
+          PY
+          node --check app.js
+          node --check sw.js
+          git diff --check
+      - name: Commit result
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'ver.47.93: update fixed category, charts, and date handling'
+          git push origin develop
