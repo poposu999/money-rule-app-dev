@@ -1,0 +1,48 @@
+name: Finalize ver.47.77
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - '.github/workflows/finalize-ver47-77.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+      - name: Final cleanup
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          p = Path('index.html')
+          s = p.read_text()
+          old = '<div id="plannedEditModal" class="modal hidden"><div class="modal-header">'
+          new = '<div id="plannedEditModal" class="modal hidden"><div class="modal-box"><div class="modal-header">'
+          if old not in s:
+              raise SystemExit('planned modal target not found')
+          s = s.replace(old, new, 1)
+          p.write_text(s)
+
+          p = Path('sw.js')
+          s = p.read_text()
+          s = s.replace('        if (response && response.ok) {\nconst copy = response.clone();\ncaches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));\n        }',
+                        '        if (response && response.ok) {\n          const copy = response.clone();\n          caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));\n        }')
+          p.write_text(s)
+          PY
+          node --check app.js
+          node --check sw.js
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/finalize-ver47-77.yml
+          git add -A
+          git commit -m "ver.47.77: finalize modal structure cleanup"
+          git push origin develop
