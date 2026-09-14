@@ -1,0 +1,55 @@
+name: Ver.47.91 dashboard text
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - '.github/workflows/ver47-91.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply update
+        run: python3 .ver47_91_update.py
+      - name: Validate edited files
+        run: |
+          node --check app.js
+          node --check sw.js
+          git diff --check
+          ! grep -R "47\.90" README.md index.html app.js sw.js
+          ! grep -R "pace-compare-title" index.html style.css
+          grep -q '<span>支出ペース</span>' index.html
+          grep -Fq '(予定支出 ${yen(planned)} を差し引き済み)' app.js
+      - name: Remove temporary updater
+        run: |
+          rm .ver47_91_update.py
+          rm .github/workflows/ver47-91.yml
+          rmdir .github/workflows
+          rmdir .github
+      - name: Validate final tree
+        run: |
+          test ! -e .github
+          actual="$(find . -maxdepth 1 -type f -printf '%f\n' | sort | tr '\n' ' ')"
+          expected="README.md app.js index.html manifest.json style.css sw.js "
+          test "$actual" = "$expected"
+          node --check app.js
+          node --check sw.js
+          git diff --check
+      - name: Commit and push
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'ver.47.91: refine dashboard wording'
+          git push origin develop
