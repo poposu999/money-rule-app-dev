@@ -51,7 +51,6 @@ button{margin-top:14px;border:0;border-radius:9px;padding:11px 16px;font-size:15
 .expense{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid #eee;}
 .expense:last-child{border-bottom:0;}
 .expense-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-.delete-btn{margin:0;padding:6px 9px;font-size:12px;background:#eee;color:#333;}
 .muted{color:#777;font-size:13px;}
 @media(max-width:600px){
 .grid,.stats,.charts{grid-template-columns:1fr;}
@@ -75,6 +74,8 @@ h1{font-size:25px;}
 .modal-actions{display:flex;justify-content:flex-end;gap:8px;}
 .modal-actions button{margin:0;}
 .secondary-btn{background:#eee;color:#333;}
+.edit-modal-delete-btn{margin-right:auto!important;background:#fff0f0;color:#b42318;border:1px solid #efb4b4;}
+.danger-btn{background:#b42318;color:#fff;}
 .section-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;}
 .section-title h2{margin:0;}
 .section-title.full{grid-column:1/-1;}
@@ -191,7 +192,7 @@ input[type="date"],#fixedDay{width:100%;max-width:100%;min-width:0;box-sizing:bo
 /* Canonical expense table layout */
 .expense-table-wrap{width:100%;overflow-x:auto}
 .expense-table,.planned-expense-table,.fixed-expense-table{width:100%;min-width:0;table-layout:fixed;border-collapse:collapse;font-size:14px}
-.expense-table th,.expense-table td,.planned-expense-table th,.planned-expense-table td,.fixed-expense-table th,.fixed-expense-table td{box-sizing:border-box;padding:10px 8px;border-bottom:1px solid #eee;vertical-align:middle;white-space:nowrap;text-align:left}
+.expense-table th,.expense-table td,.planned-expense-table th,.planned-expense-table td,.fixed-expense-table th,.fixed-expense-table td{box-sizing:border-box;padding:6px 6px;border-bottom:1px solid #eee;vertical-align:middle;white-space:nowrap;text-align:left}
 .expense-table th,.planned-expense-table th,.fixed-expense-table th{font-size:12px;color:#777;font-weight:600;background:#f8f8f8}
 .expense-table th:nth-child(1),.expense-table td:nth-child(1),.planned-expense-table th:nth-child(1),.planned-expense-table td:nth-child(1),.fixed-expense-table th:nth-child(1),.fixed-expense-table td:nth-child(1){width:10%}
 .expense-table th:nth-child(2),.expense-table td:nth-child(2),.planned-expense-table th:nth-child(2),.planned-expense-table td:nth-child(2),.fixed-expense-table th:nth-child(2),.fixed-expense-table td:nth-child(2){width:34%;white-space:normal;overflow-wrap:anywhere}
@@ -201,13 +202,13 @@ input[type="date"],#fixedDay{width:100%;max-width:100%;min-width:0;box-sizing:bo
 .expense-table .amount-col,.planned-expense-table .amount-col,.fixed-expense-table .amount-col{text-align:right;padding-right:8px}
 .expense-table .action-col,.planned-expense-table .action-col,.fixed-expense-table .action-col{text-align:right;white-space:nowrap}
 .expense-table .edit-delete-buttons,.expense-table .expense-actions,.planned-expense-table .edit-delete-buttons,.planned-expense-table .expense-actions,.fixed-expense-table .edit-delete-buttons,.fixed-expense-table .expense-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:nowrap;gap:4px}
-.expense-table .confirm-btn,.expense-table .fixed-paid,.expense-table .edit-btn,.expense-table .delete-btn,.planned-expense-table .confirm-btn,.planned-expense-table .fixed-paid,.planned-expense-table .edit-btn,.planned-expense-table .delete-btn,.fixed-expense-table .confirm-btn,.fixed-expense-table .fixed-paid,.fixed-expense-table .edit-btn,.fixed-expense-table .delete-btn{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;width:auto;height:auto;min-height:30px;margin:0;padding:5px 7px;font-size:11px;line-height:1.25;border-radius:6px;white-space:nowrap;overflow:visible;flex:0 0 auto}
+.expense-table .confirm-btn,.expense-table .fixed-paid,.expense-table .edit-btn,.planned-expense-table .confirm-btn,.planned-expense-table .fixed-paid,.planned-expense-table .edit-btn,.fixed-expense-table .confirm-btn,.fixed-expense-table .fixed-paid,.fixed-expense-table .edit-btn{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;width:auto;height:auto;min-height:24px;margin:0;padding:3px 6px;font-size:10px;line-height:1.25;border-radius:6px;white-space:nowrap;overflow:visible;flex:0 0 auto}
 .expense-table .confirm-btn,.expense-table .fixed-paid,.planned-expense-table .confirm-btn,.planned-expense-table .fixed-paid,.fixed-expense-table .confirm-btn,.fixed-expense-table .fixed-paid{border:1px solid #c7cbd1;background:#f3f4f6;color:#222}
 .planned-expense-table .confirm-btn:hover{background:#e8eaed}
 .expense-empty{padding:12px 0}
 
 @media(max-width:600px){
   .stats.card,.charts.card{grid-template-columns:1fr}
-  .expense-table th,.expense-table td,.planned-expense-table th,.planned-expense-table td,.fixed-expense-table th,.fixed-expense-table td{padding:6px 4px;font-size:10px}
-  .expense-table .confirm-btn,.expense-table .fixed-paid,.expense-table .edit-btn,.expense-table .delete-btn,.planned-expense-table .confirm-btn,.planned-expense-table .fixed-paid,.planned-expense-table .edit-btn,.planned-expense-table .delete-btn,.fixed-expense-table .confirm-btn,.fixed-expense-table .fixed-paid,.fixed-expense-table .edit-btn,.fixed-expense-table .delete-btn{font-size:8px;padding:4px 3px;min-height:28px}
+  .expense-table th,.expense-table td,.planned-expense-table th,.planned-expense-table td,.fixed-expense-table th,.fixed-expense-table td{padding:4px 3px;font-size:10px}
+  .expense-table .confirm-btn,.expense-table .fixed-paid,.expense-table .edit-btn,.planned-expense-table .confirm-btn,.planned-expense-table .fixed-paid,.planned-expense-table .edit-btn,.fixed-expense-table .confirm-btn,.fixed-expense-table .fixed-paid,.fixed-expense-table .edit-btn{font-size:8px;padding:2px 3px;min-height:22px}
 }
