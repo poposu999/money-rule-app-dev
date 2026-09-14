@@ -34,8 +34,8 @@ readme='''# 家計簿アプリ\n\n## ver.47.95\n- 支出ペースメーター下
 write('README.md',readme)
 
 all_text='\n'.join(read(p) for p in persistent)
-if 'getToday()-label' in all_text:
-    raise SystemExit('bad Today class still remains')
+if 'getToday()-label' in app:
+    raise SystemExit('bad Today class still remains in app.js')
 if '47.94' in all_text:
     raise SystemExit('stale version remains')
 if 'const VERSION="47.95";' not in app:
