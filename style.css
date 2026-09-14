@@ -26,14 +26,13 @@ button{margin-top:14px;border:0;border-radius:9px;padding:11px 16px;font-size:15
 .legend-item b{font-size:14px;}
 .legend-item small{color:#777;width:40px;text-align:right;font-size:13px;}
 .legend-dot{width:9px;height:9px;border-radius:50%;}
-.line-chart-wrap,.bar-chart-wrap{width:100%;overflow:hidden;}
-.line-chart-wrap svg,.bar-chart-wrap svg{width:100%;height:auto;display:block;}
+.line-chart-wrap{width:100%;overflow:hidden;}
+.line-chart-wrap svg{width:100%;height:auto;display:block;}
 .gridline{stroke:#e5e7eb;stroke-width:1;}
 .series{stroke:#202124;stroke-width:3;stroke-linejoin:round;stroke-linecap:round;}
 .point{fill:#202124;}
 .axis-label{fill:#6b7280;font-size:18px;font-weight:600;}
 .center{text-anchor:middle;}
-.bar{fill:#202124;}
 .chart-summary{font-size:15px;color:#6b7280;margin-top:7px;}
 .muted{color:#777;font-size:13px;}
 @media(max-width:600px){
