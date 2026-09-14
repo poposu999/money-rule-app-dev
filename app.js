@@ -1,5 +1,5 @@
 const KEY="moneyRuleAppV2";
-const VERSION="47.82";
+const VERSION="47.83";
 // Deletion is available only from edit modals.
 let pendingEditDelete=null;
 function setupEditDeleteFlow(){
