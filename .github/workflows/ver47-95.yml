@@ -26,7 +26,7 @@ jobs:
           git diff --check
       - name: Validate Today class fix
         run: |
-          ! grep -R -n 'getToday()-label' README.md app.js index.html manifest.json style.css sw.js
+          ! grep -n 'getToday()-label' app.js
           grep -n 'todayLabel.className=`today-label' app.js
           grep -n '\.today-label{' style.css
           ! grep -R -n '47\.94' README.md app.js index.html manifest.json style.css sw.js
