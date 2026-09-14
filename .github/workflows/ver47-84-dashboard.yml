@@ -1,0 +1,222 @@
+name: Ver.47.84 budget dashboard
+
+on:
+  push:
+    branches:
+      - develop
+    paths:
+      - '.github/workflows/ver47-84-dashboard.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+
+      - name: Update Ver.47.84
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          # index.html: replace the old pace/forecast block with the new budget dashboard.
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          dashboard = '''<section class="card budget-dashboard" data-section-content="progress">
+          <div class="section-title budget-dashboard-title"><h2>今月の予算</h2><button class="minus-btn" data-section="progress">−</button></div>
+          <div class="budget-hero">
+            <span class="budget-hero-label">今月あと使える</span>
+            <strong id="dashboardRemaining">¥0</strong>
+            <span class="budget-hero-note" id="dashboardRemainingNote">現在の残り予算</span>
+          </div>
+          <div class="budget-meter-row">
+            <div class="progress budget-progress"><div id="budgetProgressBar"></div></div>
+            <strong class="budget-progress-percent" id="budgetProgressPercent">0%</strong>
+          </div>
+          <div class="budget-meter-meta"><span>使った金額 <strong id="budgetSpentMeta">¥0</strong></span><span>全体の予算 <strong id="budgetTotalMeta">¥0</strong></span></div>
+          <div class="progress-timeline" id="progressTimelineTrack">
+            <div class="progress-timeline-line"></div>
+            <div class="progress-timeline-labels" id="progressTimelineLabels"></div>
+            <span id="progressTodayMarker" class="progress-today-marker" aria-label="現在の日付"></span>
+          </div>
+          <div class="budget-summary-grid">
+            <div class="budget-summary-item"><span>今月の支出</span><strong id="dashboardSpent">¥0</strong></div>
+            <div class="budget-summary-item"><span>今日時点の目安</span><strong id="dashboardTarget">¥0</strong></div>
+            <div class="budget-summary-item"><span>差額</span><strong id="dashboardPaceDiff">¥0</strong></div>
+            <div class="budget-summary-item"><span>月末予測</span><strong id="dashboardForecast">¥0</strong></div>
+          </div>
+          <div class="budget-status neutral" id="dashboardStatus"><strong id="dashboardStatusLabel">データ待ち</strong><span id="dashboardStatusMessage">支出を登録するとペースを判定します。</span></div>
+          </section><section class="card entry-section"'''
+          s, count = re.subn(r'<section class="card" data-section-content="progress">.*?</section><section class="card entry-section"', dashboard, s, count=1, flags=re.S)
+          assert count == 1, f'progress section replacement count={count}'
+          s = s.replace('47.83', '47.84')
+          p.write_text(s, encoding='utf-8')
+
+          # app.js: keep existing household calculations, but drive the new dashboard from one renderer.
+          p = Path('app.js')
+          s = p.read_text(encoding='utf-8')
+          s = s.replace('const VERSION="47.83";', 'const VERSION="47.84";')
+          calc_block = '''function calc(){const n=getNumbers(),d=getDayInfo(),daily=Math.max(0,n.remaining)/Math.max(1,d.remainingDays);$("incomeView").textContent=yen(n.totalIncome);$("extraIncome").textContent=yen(n.extra);$("plannedSavings").textContent=yen(n.plannedSavings);$("spendingBudget").textContent=yen(n.spendingBudget);$("monthSpent").textContent=yen(n.spent);$("remainingBudget").textContent=yen(n.remaining);$("remainingDaysLabel").textContent=`（残り${d.remainingDays}日）`;$("dailyBudget").textContent=yen(daily);$("plannedExpenseView").textContent=yen(n.plannedAmount);renderBudgetDashboard(n,d);renderValidation(n);renderFixedExpenses();renderCategoryChart(n.es);renderDailyChart(n.es);renderMonthlyChart();renderSavingsChart();}
+          function renderBudgetDashboard(n,d){const budget=Math.max(0,Number(n.spendingBudget)||0),spent=Math.max(0,Number(n.spent)||0),planned=Math.max(0,Number(n.plannedAmount)||0),remaining=Number(n.remaining)||0,rawPct=budget>0?spent/budget*100:0,pct=Number.isFinite(rawPct)?Math.max(0,rawPct):0,ideal=budget*(d.day/Math.max(1,d.last)),diff=spent-ideal,projected=(!spent&&!planned)?0:(spent/Math.max(1,d.day))*d.last+planned;$("dashboardRemaining").textContent=yen(remaining);$("dashboardRemainingNote").textContent=planned>0?`予定支出 ${yen(planned)} を差し引いた残り`:"現在の残り予算";$("budgetProgressBar").style.width=Math.min(100,pct)+"%";$("budgetProgressPercent").textContent=`${Math.round(pct)}%`;$("budgetSpentMeta").textContent=yen(spent);$("budgetTotalMeta").textContent=yen(budget);$("dashboardSpent").textContent=yen(spent);$("dashboardTarget").textContent=yen(ideal);$("dashboardPaceDiff").textContent=diff>0?`+${yen(diff)}`:diff<0?`-${yen(Math.abs(diff))}`:yen(0);$("dashboardForecast").textContent=yen(projected);const status=$("dashboardStatus"),label=$("dashboardStatusLabel"),message=$("dashboardStatusMessage");let level="neutral",statusLabel="データ待ち",statusMessage="支出を登録するとペースを判定します。";if(budget<=0){statusLabel="予算未設定";statusMessage="家計ルールを設定すると支出ペースを判定できます。";}else if(spent>budget||projected>budget*1.1){level="danger";statusLabel="使いすぎ";statusMessage=projected>budget?`このペースだと、月末に予算を${yen(projected-budget)}超える見込みです。`:`現在、予算を${yen(spent-budget)}超えています。`;}else if(diff>budget*0.03||projected>budget){level="warning";statusLabel="少し使いすぎ";statusMessage=projected>budget?`このペースだと、月末に予算を${yen(projected-budget)}超える見込みです。`:`今日時点の目安を${yen(diff)}上回っています。`;}else{level="good";statusLabel="順調";statusMessage=spent||planned?"今のところ予算内のペースです。":"まだ支出はありません。";}status.className=`budget-status ${level}`;label.textContent=statusLabel;message.textContent=statusMessage;renderProgressTimeline(d.day,d.last);}
+          function renderValidation'''
+          s, count = re.subn(r'function calc\(\)\{.*?\}\nfunction renderForecast\(n,d\)\{.*?\}\nfunction renderValidation', calc_block, s, count=1, flags=re.S)
+          assert count == 1, f'calc/forecast replacement count={count}'
+
+          timeline_block = '''function renderProgressTimeline(day,last){const track=$("progressTimelineTrack"),marker=$("progressTodayMarker"),labels=$("progressTimelineLabels");if(!track||!marker||!labels)return;const ratio=value=>last>0?Math.min(1,Math.max(0,value/last)):0,pct=ratio(day)*100;marker.style.left=pct+"%";marker.setAttribute("aria-label",`現在${day}日目`);let currentLabel=$("progressTodayLabel");if(!currentLabel){currentLabel=document.createElement("span");currentLabel.id="progressTodayLabel";currentLabel.className="progress-today-label";track.appendChild(currentLabel);}currentLabel.textContent="今日";currentLabel.style.left=pct+"%";const days=[0,10,20,last];labels.innerHTML=days.map((value,i)=>`<span class="timeline-label timeline-label-${i}">${i===3?"月末":value+"日"}</span>`).join("");labels.querySelectorAll(".timeline-label").forEach((el,i)=>{el.style.left=(ratio(days[i])*100)+"%";});}
+          function renderCategoryChart'''
+          s, count = re.subn(r'function renderProgressTimeline\(day,last\)\{.*?\}function renderBudgetProgress\(budget,spent\)\{.*?\}\nfunction renderCategoryChart', timeline_block, s, count=1, flags=re.S)
+          assert count == 1, f'progress renderer replacement count={count}'
+          assert 'renderForecast(' not in s
+          assert 'renderBudgetProgress(' not in s
+          p.write_text(s, encoding='utf-8')
+
+          # style.css: remove the obsolete pace/forecast rules and add the new dashboard styling.
+          p = Path('style.css')
+          s = p.read_text(encoding='utf-8')
+          obsolete_patterns = [
+            r'\.progress-wrap\{[^}]*\}\n',
+            r'\.progress-label,\.progress-sub\{[^}]*\}\n',
+            r'\.progress-label strong\{[^}]*\}\n',
+            r'\.progress-meter-caption\{[^}]*\}\n',
+            r'\.progress\{[^}]*\}\n',
+            r'\.progress>div\{[^}]*\}\n',
+            r'\.progress-safe\{[^}]*\}\n',
+            r'\.progress-safe strong\{[^}]*\}\n',
+            r'\.progress-sub\{[^}]*\}\n',
+            r'\.pace-summary\{[^}]*\}\n',
+            r'\.pace-summary strong\{[^}]*\}\n',
+            r'\.pace-summary small\{[^}]*\}\n',
+            r'\.forecast-box\{[^}]*\}\n',
+            r'\.forecast-label\{[^}]*\}\n',
+            r'\.forecast-box strong\{[^}]*\}\n',
+            r'\.forecast-status\{[^}]*\}\n',
+            r'\.forecast-status\.(?:good|danger|neutral)\{[^}]*\}\n',
+            r'\.progress-today-marker\{[^}]*\}\n',
+            r'\.progress-timeline\{[^}]*\}\n',
+            r'\.progress-timeline-line\{[^}]*\}\n',
+            r'\.progress-timeline-labels\{[^}]*\}\n',
+            r'\.timeline-label\{[^}]*\}\n',
+            r'\.timeline-label:first-child\{[^}]*\}\n',
+            r'\.timeline-label:last-child\{[^}]*\}\n',
+            r'\.progress-today-label\{[^}]*\}\n',
+          ]
+          for pattern in obsolete_patterns:
+            s = re.sub(pattern, '', s)
+
+          dashboard_css = '''
+          /* Budget dashboard */
+          .budget-dashboard{padding:18px;}
+          .budget-dashboard-title{margin-bottom:6px;}
+          .budget-dashboard-title h2{font-size:15px;color:#4b5563;}
+          .budget-hero{text-align:center;padding:8px 0 10px;}
+          .budget-hero-label{display:block;font-size:16px;font-weight:700;color:#374151;}
+          .budget-hero strong{display:block;margin-top:5px;font-size:44px;line-height:1.05;letter-spacing:-1.5px;}
+          .budget-hero-note{display:block;margin-top:6px;font-size:11px;color:#6b7280;}
+          .budget-meter-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;margin-top:8px;}
+          .progress{height:12px;background:#e5e7eb;border-radius:999px;overflow:hidden;position:relative;}
+          .progress>div{height:100%;width:0;background:#4b5563;border-radius:999px;transition:width .25s;}
+          .budget-progress-percent{min-width:40px;text-align:right;font-size:15px;}
+          .budget-meter-meta{display:flex;justify-content:space-between;gap:12px;margin-top:7px;font-size:11px;color:#6b7280;}
+          .budget-meter-meta strong{color:#4b5563;font-size:12px;}
+          .progress-timeline{position:relative;height:58px;margin:15px 4px 2px;}
+          .progress-timeline-line{position:absolute;left:0;right:0;top:10px;height:2px;background:#d1d5db;}
+          .progress-timeline-labels{position:absolute;inset:0 0 auto;height:36px;font-size:10px;color:#6b7280;}
+          .timeline-label{position:absolute;top:20px;transform:translateX(-50%);white-space:nowrap;}
+          .timeline-label:first-child{transform:none;}
+          .timeline-label:last-child{transform:translateX(-100%);}
+          .progress-today-marker{position:absolute;top:4px;width:14px;height:14px;border-radius:50%;background:#202124;border:3px solid #fff;box-shadow:0 0 0 1px #202124;transform:translateX(-50%);z-index:2;pointer-events:none;}
+          .progress-today-label{position:absolute;top:39px;transform:translateX(-50%);padding:3px 7px;border-radius:6px;background:#374151;color:#fff;font-size:10px;font-weight:700;line-height:1.2;white-space:nowrap;pointer-events:none;}
+          .budget-summary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));margin-top:8px;background:#f7f8fa;border-radius:12px;overflow:hidden;}
+          .budget-summary-item{padding:12px;min-width:0;}
+          .budget-summary-item:nth-child(odd){border-right:1px solid #e5e7eb;}
+          .budget-summary-item:nth-child(-n+2){border-bottom:1px solid #e5e7eb;}
+          .budget-summary-item span{display:block;font-size:11px;color:#6b7280;}
+          .budget-summary-item strong{display:block;margin-top:4px;font-size:18px;line-height:1.2;overflow-wrap:anywhere;}
+          .budget-status{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:center;margin-top:10px;padding:11px 12px;border-radius:11px;}
+          .budget-status strong{font-size:14px;white-space:nowrap;}
+          .budget-status span{font-size:11px;line-height:1.45;}
+          .budget-status.good{background:#eef7ee;color:#18794e;}
+          .budget-status.warning{background:#fff7e6;color:#8a5a00;}
+          .budget-status.danger{background:#fff0f0;color:#b42318;}
+          .budget-status.neutral{background:#f3f4f6;color:#4b5563;}
+          @media(max-width:600px){
+            .budget-dashboard{padding:15px 12px;}
+            .budget-hero{padding-top:6px;}
+            .budget-hero-label{font-size:15px;}
+            .budget-hero strong{font-size:38px;letter-spacing:-1px;}
+            .budget-meter-meta{font-size:10px;}
+            .budget-meter-meta strong{font-size:11px;}
+            .budget-summary-item{padding:10px 9px;}
+            .budget-summary-item strong{font-size:16px;}
+            .budget-status{gap:7px;padding:10px;}
+            .budget-status strong{font-size:13px;}
+            .budget-status span{font-size:10px;}
+          }
+          '''
+          marker = '.memo-cell{cursor:pointer;position:relative;}'
+          assert marker in s, 'memo-cell marker missing'
+          s = s.replace(marker, dashboard_css + '\n' + marker, 1)
+          p.write_text(s, encoding='utf-8')
+
+          # Version-bearing files.
+          p = Path('sw.js')
+          s = p.read_text(encoding='utf-8').replace('47.83', '47.84')
+          p.write_text(s, encoding='utf-8')
+
+          Path('README.md').write_text('''# 家計簿アプリ
+
+          ## ver.47.84
+          - 支出ペース欄を「今月あと使える」を主役にした予算ダッシュボードへ再設計
+          - 支出進捗バーと 0日 / 10日 / 20日 / 月末 の日数メモリを一体化し、今日の位置を表示
+          - 今月の支出 / 今日時点の目安 / 差額 / 月末予測を2×2のサマリーに整理
+          - 支出ペースを「順調 / 少し使いすぎ / 使いすぎ」の3段階で判定し、月末見込みを短文で表示
+          - 予定支出がある場合は「今月あと使える」に予定支出を差し引いた残り予算を表示
+          - 旧ペース表示・旧月末予測用の不要なHTML / JavaScript / CSSを削除
+          - index.html / app.js / sw.js / キャッシュ指定 / アプリ下部のバージョンを ver.47.84 に統一
+          '''.replace('          ', ''), encoding='utf-8')
+          PY
+
+      - name: Validate
+        shell: bash
+        run: |
+          node --check app.js
+          node --check sw.js
+          git diff --check
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          files = {name: Path(name).read_text(encoding='utf-8') for name in ['README.md','index.html','app.js','style.css','sw.js']}
+          joined = '\n'.join(files.values())
+          assert '47.83' not in joined
+          for token in ['ver.47.84','style.css?v=47.84','app.js?v=47.84','const VERSION="47.84"','money-rule-app-v47.84']:
+              assert token in joined, token
+          for token in ['今月あと使える','dashboardRemaining','dashboardTarget','dashboardPaceDiff','dashboardForecast','dashboardStatusLabel','renderBudgetDashboard']:
+              assert token in joined, token
+          for token in ['budgetProgressText','paceRemainingBudget','paceDailyBudget','paceRemainingDays','forecastAmount','forecastStatus','renderForecast(','renderBudgetProgress(','progress-wrap','pace-summary','forecast-box']:
+              assert token not in joined, token
+          assert 'width:37%' in files['style.css']
+          assert 'width:21%' in files['style.css']
+          ids = re.findall(r'id="([^"]+)"', files['index.html'])
+          duplicates = sorted({x for x in ids if ids.count(x) > 1})
+          assert not duplicates, f'duplicate ids: {duplicates}'
+          assert files['README.md'].startswith('# 家計簿アプリ\n\n## ver.47.84')
+          PY
+
+      - name: Commit update and remove one-time workflow
+        shell: bash
+        run: |
+          rm -f .github/workflows/ver47-84-dashboard.yml
+          rmdir .github/workflows 2>/dev/null || true
+          rmdir .github 2>/dev/null || true
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "ver.47.84: redesign budget dashboard"
+          git push origin HEAD:develop
