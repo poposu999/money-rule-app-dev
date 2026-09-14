@@ -1,9 +1,9 @@
-const CACHE_NAME = "money-rule-app-v47.90";
+const CACHE_NAME = "money-rule-app-v47.91";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=47.90",
-  "./app.js?v=47.90",
+  "./style.css?v=47.91",
+  "./app.js?v=47.91",
   "./manifest.json"
 ];
 

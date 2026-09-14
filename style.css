@@ -166,8 +166,6 @@ input,select,button{box-sizing:border-box;}
 .budget-daily-guide strong{text-align:right;color:#202124;font-size:15px;}
 .budget-daily-guide small{font-size:10px;white-space:nowrap;}
 .pace-compare{margin-top:6px;padding:12px;border:1px solid #e5e7eb;border-radius:12px;background:#fff;}
-.pace-compare-title{margin-bottom:10px;}
-.pace-compare-title strong{font-size:14px;color:#202124;}
 .pace-unified{min-width:0;}
 .pace-summary-line{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:2px;font-size:11px;color:#6b7280;}
 .pace-limit{text-align:right;white-space:nowrap;}
