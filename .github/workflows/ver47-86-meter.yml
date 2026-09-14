@@ -1,0 +1,213 @@
+name: Ver.47.86 pace meter update
+
+on:
+  push:
+    branches:
+      - develop
+    paths:
+      - '.github/workflows/ver47-86-meter.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+
+      - name: Apply Ver.47.86
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          index = Path('index.html')
+          html = index.read_text()
+          new_dashboard = '''<section class="card budget-dashboard" data-section-content="progress">
+          <div class="section-title budget-dashboard-title"><h2>今月の予算</h2><button class="minus-btn" data-section="progress">−</button></div>
+          <div class="budget-hero">
+            <span class="budget-hero-label">今月あと使える</span>
+            <strong id="dashboardRemaining">¥0</strong>
+            <span class="budget-hero-note" id="dashboardRemainingNote">現在の残り予算</span>
+          </div>
+          <div class="budget-daily-guide">
+            <span>1日あたりの目安</span>
+            <strong id="dashboardDailyBudget">¥0 / 日</strong>
+            <small id="dashboardDailyDays">（残り0日）</small>
+          </div>
+          <div class="pace-compare">
+            <div class="pace-compare-title"><strong>支出ペース</strong><span>月の進み具合と比べて確認</span></div>
+            <div class="pace-row">
+              <div class="pace-row-head"><span>使った金額</span><strong id="budgetProgressPercent">0%</strong></div>
+              <div class="pace-bar pace-spending"><div id="budgetProgressBar"></div></div>
+            </div>
+            <div class="pace-row pace-row-calendar">
+              <div class="pace-row-head"><span>今月の経過</span><strong id="monthProgressPercent">0%</strong></div>
+              <div class="pace-bar pace-calendar"><div id="monthProgressBar"></div></div>
+              <div class="progress-timeline-labels" id="progressTimelineLabels"></div>
+            </div>
+            <div class="pace-comparison neutral" id="paceComparison">支出と日数の差を表示します</div>
+          </div>
+          <div class="budget-meter-meta"><span>使った金額 <strong id="budgetSpentMeta">¥0</strong></span><span>全体の予算 <strong id="budgetTotalMeta">¥0</strong></span></div>
+          <div class="budget-summary-grid">
+            <div class="budget-summary-item"><span>今月の支出</span><strong id="dashboardSpent">¥0</strong></div>
+            <div class="budget-summary-item"><span>今日時点の目安</span><strong id="dashboardTarget">¥0</strong></div>
+            <div class="budget-summary-item"><span>目安より</span><strong id="dashboardPaceDiff">0円</strong></div>
+            <div class="budget-summary-item"><span>月末予測<small>（今のペースの場合）</small></span><strong id="dashboardForecast">¥0</strong></div>
+          </div>
+          <div class="budget-status neutral" id="dashboardStatus"><strong id="dashboardStatusLabel">データ待ち</strong><span id="dashboardStatusMessage">支出を登録するとペースを判定します。</span></div>
+          </section>'''
+          html, count = re.subn(r'<section class="card budget-dashboard" data-section-content="progress">.*?</section>(?=<section class="card entry-section")', new_dashboard, html, count=1, flags=re.S)
+          if count != 1:
+              raise SystemExit(f'index dashboard replace failed: {count}')
+          html = html.replace('47.85', '47.86')
+          index.write_text(html)
+
+          app = Path('app.js')
+          js = app.read_text()
+          old_dash = re.search(r'function renderBudgetDashboard\(n,d\)\{.*?\}\nfunction renderValidation', js, flags=re.S)
+          if not old_dash:
+              raise SystemExit('renderBudgetDashboard not found')
+          new_dash = '''function renderBudgetDashboard(n,d){const budget=Math.max(0,Number(n.spendingBudget)||0),spent=Math.max(0,Number(n.spent)||0),planned=Math.max(0,Number(n.plannedAmount)||0),remaining=Number(n.remaining)||0,rawPct=budget>0?spent/budget*100:0,pct=Number.isFinite(rawPct)?Math.max(0,rawPct):0,ideal=budget*(d.day/Math.max(1,d.last)),diff=spent-ideal,projected=(!spent&&!planned)?0:(spent/Math.max(1,d.day))*d.last+planned,daily=Math.max(0,remaining)/Math.max(1,d.remainingDays);$("dashboardRemaining").textContent=yen(remaining);$("dashboardRemainingNote").textContent=planned>0?`予定支出 ${yen(planned)} を差し引いた残り`:"現在の残り予算";$("dashboardDailyBudget").textContent=`${yen(daily)} / 日`;$("dashboardDailyDays").textContent=`（残り${d.remainingDays}日）`;$("budgetProgressBar").style.width=Math.min(100,pct)+"%";$("budgetProgressPercent").textContent=`${Math.round(pct)}%`;$("budgetSpentMeta").textContent=yen(spent);$("budgetTotalMeta").textContent=yen(budget);$("dashboardSpent").textContent=yen(spent);$("dashboardTarget").textContent=yen(ideal);const diffAmount=Math.round(Math.abs(diff)).toLocaleString("ja-JP");$("dashboardPaceDiff").textContent=diff>0?`${diffAmount}円 多い`:diff<0?`${diffAmount}円 少ない`:"ちょうど";$("dashboardForecast").textContent=yen(projected);renderProgressTimeline(d.day,d.last,pct);const status=$("dashboardStatus"),label=$("dashboardStatusLabel"),message=$("dashboardStatusMessage");let level="neutral",statusLabel="データ待ち",statusMessage="支出を登録するとペースを判定します。";if(budget<=0){statusLabel="予算未設定";statusMessage="家計ルールを設定すると支出ペースを判定できます。";}else if(spent>budget||projected>budget*1.1){level="danger";statusLabel="使いすぎ";statusMessage=projected>budget?`このペースだと、月末に予算を${yen(projected-budget)}超える見込みです。`:`現在、予算を${yen(spent-budget)}超えています。`;}else if(diff>budget*0.03||projected>budget){level="warning";statusLabel="少し使いすぎ";statusMessage=projected>budget?`このペースだと、月末に予算を${yen(projected-budget)}超える見込みです。`:`今日時点の目安を${yen(diff)}上回っています。`;}else{level="good";statusLabel="順調";statusMessage=spent||planned?"今のところ予算内のペースです。":"まだ支出はありません。";}status.className=`budget-status ${level}`;label.textContent=statusLabel;message.textContent=statusMessage;}
+function renderValidation'''
+          js = js[:old_dash.start()] + new_dash + js[old_dash.end():]
+
+          old_timeline = re.search(r'function renderProgressTimeline\(day,last\)\{.*?\}\nfunction renderCategoryChart', js, flags=re.S)
+          if not old_timeline:
+              raise SystemExit('renderProgressTimeline not found')
+          new_timeline = '''function renderProgressTimeline(day,last,spendingPct){const monthPct=last>0?Math.min(100,Math.max(0,day/last*100)):0,monthBar=$("monthProgressBar"),monthText=$("monthProgressPercent"),labels=$("progressTimelineLabels"),comparison=$("paceComparison");if(monthBar)monthBar.style.width=monthPct+"%";if(monthText)monthText.textContent=`${Math.round(monthPct)}%（${day}日目）`;if(labels){const ratio=value=>last>0?Math.min(1,Math.max(0,value/last)):0,days=[0,10,20,last];labels.innerHTML=days.map((value,i)=>`<span class="timeline-label timeline-label-${i}">${i===3?"月末":value+"日"}</span>`).join("");labels.querySelectorAll(".timeline-label").forEach((el,i)=>{el.style.left=(ratio(days[i])*100)+"%";});}if(comparison){const gap=(Number(spendingPct)||0)-monthPct,abs=Math.round(Math.abs(gap));if(gap>5){comparison.textContent=`支出が日数より ${abs}ポイント先行`;comparison.className="pace-comparison warning";}else if(gap<-5){comparison.textContent=`日数に対して ${abs}ポイント余裕`;comparison.className="pace-comparison good";}else{comparison.textContent="支出と日数はほぼ同じペース";comparison.className="pace-comparison neutral";}}}
+function renderCategoryChart'''
+          js = js[:old_timeline.start()] + new_timeline + js[old_timeline.end():]
+          js = js.replace('47.85', '47.86')
+          app.write_text(js)
+
+          css = Path('style.css')
+          styles = css.read_text()
+          new_css = '''/* Budget dashboard */
+          .budget-dashboard{padding:18px;}
+          .budget-dashboard-title{margin-bottom:6px;}
+          .budget-dashboard-title h2{font-size:15px;color:#4b5563;}
+          .budget-hero{text-align:center;padding:8px 0 8px;}
+          .budget-hero-label{display:block;font-size:16px;font-weight:700;color:#374151;}
+          .budget-hero strong{display:block;margin-top:5px;font-size:44px;line-height:1.05;letter-spacing:-1.5px;}
+          .budget-hero-note{display:block;margin-top:6px;font-size:11px;color:#6b7280;}
+          .budget-daily-guide{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center;margin:4px 0 12px;padding:9px 11px;border-radius:10px;background:#f7f8fa;color:#6b7280;font-size:11px;}
+          .budget-daily-guide strong{text-align:right;color:#202124;font-size:15px;}
+          .budget-daily-guide small{font-size:10px;white-space:nowrap;}
+          .pace-compare{margin-top:6px;padding:12px;border:1px solid #e5e7eb;border-radius:12px;background:#fff;}
+          .pace-compare-title{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:10px;}
+          .pace-compare-title strong{font-size:14px;color:#202124;}
+          .pace-compare-title span{font-size:10px;color:#8a8f98;}
+          .pace-row+.pace-row{margin-top:10px;}
+          .pace-row-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:5px;font-size:11px;color:#6b7280;}
+          .pace-row-head strong{font-size:13px;color:#202124;}
+          .pace-bar{height:12px;background:#e5e7eb;border-radius:999px;overflow:hidden;position:relative;width:100%;}
+          .pace-bar>div{height:100%;width:0;border-radius:999px;transition:width .25s;}
+          .pace-spending>div{background:#30343a;}
+          .pace-calendar>div{background:#8b929c;}
+          .pace-row-calendar{padding-bottom:23px;position:relative;}
+          .progress-timeline-labels{position:absolute;left:0;right:0;bottom:0;height:16px;font-size:9px;color:#8a8f98;}
+          .timeline-label{position:absolute;top:3px;transform:translateX(-50%);white-space:nowrap;}
+          .timeline-label:first-child{transform:none;}
+          .timeline-label:last-child{transform:translateX(-100%);}
+          .pace-comparison{margin-top:4px;padding:7px 9px;border-radius:8px;text-align:center;font-size:11px;font-weight:700;}
+          .pace-comparison.good{background:#eef7ee;color:#18794e;}
+          .pace-comparison.warning{background:#fff7e6;color:#8a5a00;}
+          .pace-comparison.neutral{background:#f3f4f6;color:#4b5563;}
+          .budget-meter-meta{display:flex;justify-content:space-between;gap:12px;margin-top:8px;font-size:11px;color:#6b7280;}
+          .budget-meter-meta strong{color:#4b5563;font-size:12px;}
+          .budget-summary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));margin-top:12px;background:#f7f8fa;border-radius:12px;overflow:hidden;}
+          .budget-summary-item{padding:12px;min-width:0;}
+          .budget-summary-item:nth-child(odd){border-right:1px solid #e5e7eb;}
+          .budget-summary-item:nth-child(-n+2){border-bottom:1px solid #e5e7eb;}
+          .budget-summary-item span{display:block;font-size:11px;color:#6b7280;}
+          .budget-summary-item span small{display:block;margin-top:2px;font-size:9px;color:#9ca3af;}
+          .budget-summary-item strong{display:block;margin-top:4px;font-size:18px;line-height:1.2;overflow-wrap:anywhere;}
+          .budget-status{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:center;margin-top:10px;padding:11px 12px;border-radius:11px;}
+          .budget-status strong{font-size:14px;white-space:nowrap;}
+          .budget-status span{font-size:11px;line-height:1.45;}
+          .budget-status.good{background:#eef7ee;color:#18794e;}
+          .budget-status.warning{background:#fff7e6;color:#8a5a00;}
+          .budget-status.danger{background:#fff0f0;color:#b42318;}
+          .budget-status.neutral{background:#f3f4f6;color:#4b5563;}
+          @media(max-width:600px){
+            .budget-dashboard{padding:15px 12px;}
+            .budget-hero{padding-top:6px;}
+            .budget-hero-label{font-size:15px;}
+            .budget-hero strong{font-size:38px;letter-spacing:-1px;}
+            .budget-daily-guide{grid-template-columns:auto 1fr;padding:8px 9px;gap:4px 8px;}
+            .budget-daily-guide strong{font-size:14px;}
+            .budget-daily-guide small{grid-column:2;text-align:right;font-size:9px;}
+            .pace-compare{padding:10px 9px;}
+            .pace-compare-title span{font-size:9px;}
+            .pace-row-head{font-size:10px;}
+            .pace-row-head strong{font-size:12px;}
+            .pace-bar{height:11px;}
+            .pace-comparison{font-size:10px;}
+            .budget-meter-meta{font-size:10px;}
+            .budget-meter-meta strong{font-size:11px;}
+            .budget-summary-item{padding:10px 9px;}
+            .budget-summary-item strong{font-size:15px;}
+            .budget-status{gap:7px;padding:10px;}
+            .budget-status strong{font-size:13px;}
+            .budget-status span{font-size:10px;}
+          }
+          '''
+          styles, count = re.subn(r'/\* Budget dashboard \*/.*?(?=\.memo-cell\{)', new_css, styles, count=1, flags=re.S)
+          if count != 1:
+              raise SystemExit(f'CSS dashboard replace failed: {count}')
+          css.write_text(styles)
+
+          sw = Path('sw.js')
+          sw.write_text(sw.read_text().replace('47.85', '47.86'))
+
+          Path('README.md').write_text('''# 家計簿アプリ
+
+## ver.47.86
+- 支出ペースを「使った金額」と「今月の経過」の2本のメーターに分離
+- 2本のメーターは同じ幅・同じ開始位置・同じ終了位置に統一し、上下を近接配置
+- 上段に予算使用率、下段に月の経過率と当日の日付を表示
+- 日数側には 0日 / 10日 / 20日 / 月末 の目盛りを表示
+- 支出と日数の差を「○ポイント先行 / ○ポイント余裕 / ほぼ同じペース」で明示
+- Ver.47.85で追加した1日あたりの目安、目安との差、月末予測の補足は維持
+- index.html / app.js / sw.js / キャッシュ指定 / アプリ下部のバージョンを ver.47.86 に統一
+''')
+          PY
+
+          node --check app.js
+          node --check sw.js
+          grep -q 'style.css?v=47.86' index.html
+          grep -q 'app.js?v=47.86' index.html
+          grep -q 'ver.47.86' index.html
+          grep -q 'const VERSION="47.86"' app.js
+          grep -q 'money-rule-app-v47.86' sw.js
+          grep -q '使った金額' index.html
+          grep -q '今月の経過' index.html
+          grep -q 'monthProgressBar' index.html
+          grep -q 'paceComparison' index.html
+          grep -q 'dashboardDailyBudget' index.html
+          grep -q '今のペースの場合' index.html
+          ! grep -q 'budget-combined-meter' index.html
+          ! grep -q 'progressTodayMarker' index.html
+          ! grep -q 'progress-today-marker' style.css
+          ! grep -q 'progress-today-label' style.css
+          ! grep -R '47.85' README.md index.html app.js style.css sw.js
+          git diff --check
+
+          git rm .github/workflows/ver47-86-meter.yml
+          rmdir .github/workflows 2>/dev/null || true
+          rmdir .github 2>/dev/null || true
+
+          test "$(find . -maxdepth 1 -type f -printf '%f\n' | sort | tr '\n' ' ')" = "README.md app.js index.html manifest.json style.css sw.js "
+          test ! -d .github
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'ver.47.86: clarify spending pace comparison'
+          git push origin develop
