@@ -1,0 +1,77 @@
+name: Ver.47.82 table column update
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - '.github/workflows/ver47-82-columns.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+
+      - name: Update Ver.47.82
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          # Version-bearing files
+          for name in ['index.html', 'app.js', 'sw.js']:
+              p = Path(name)
+              s = p.read_text()
+              if '47.81' not in s:
+                  raise SystemExit(f'{name}: expected 47.81 reference not found')
+              p.write_text(s.replace('47.81', '47.82'))
+
+          # Table widths: date 10 / memo 38 / category 14 / amount 18 / action 20
+          p = Path('style.css')
+          s = p.read_text()
+          old_memo = 'td:nth-child(2){width:36%;white-space:normal;overflow-wrap:anywhere}'
+          new_memo = 'td:nth-child(2){width:38%;white-space:normal;overflow-wrap:anywhere}'
+          old_action = 'td:nth-child(5){width:22%}'
+          new_action = 'td:nth-child(5){width:20%}'
+          if s.count(old_memo) != 1:
+              raise SystemExit(f'style.css: memo width rule match count={s.count(old_memo)}')
+          if s.count(old_action) != 1:
+              raise SystemExit(f'style.css: action width rule match count={s.count(old_action)}')
+          s = s.replace(old_memo, new_memo).replace(old_action, new_action)
+          p.write_text(s)
+
+          Path('README.md').write_text('''# 家計簿アプリ\n\n## ver.47.82\n- 一覧テーブルの操作列を 22% → 20% に縮小\n- 空いた2%をメモ列へ回し、メモ列を 36% → 38% に拡大\n- 日付10% / メモ38% / カテゴリ14% / 金額18% / 操作20% に統一\n- 今月の支出 / 今月の予定支出 / 固定費一覧の3テーブルへ同じ列幅を適用\n- index.html / app.js / sw.js / キャッシュ指定 / アプリ下部のバージョンを ver.47.82 に統一\n''')
+          PY
+
+      - name: Validate
+        run: |
+          node --check app.js
+          node --check sw.js
+          python3 -m json.tool manifest.json >/dev/null
+          grep -q 'style.css?v=47.82' index.html
+          grep -q 'app.js?v=47.82' index.html
+          grep -q 'ver.47.82' index.html
+          grep -q 'const VERSION="47.82"' app.js
+          grep -q 'money-rule-app-v47.82' sw.js
+          grep -q 'style.css?v=47.82' sw.js
+          grep -q 'app.js?v=47.82' sw.js
+          grep -q 'nth-child(2){width:38%;white-space:normal;overflow-wrap:anywhere}' style.css
+          grep -q 'nth-child(5){width:20%}' style.css
+          if grep -R --exclude-dir=.git --exclude='ver47-82-columns.yml' -n '47\.81' README.md index.html app.js sw.js style.css; then
+            echo 'stale active version 47.81 remains'
+            exit 1
+          fi
+
+      - name: Remove one-time workflow and commit
+        run: |
+          rm -f .github/workflows/ver47-82-columns.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add README.md index.html app.js style.css sw.js .github/workflows/ver47-82-columns.yml
+          git commit -m 'ver.47.82: narrow action column to 20 percent'
+          git push origin develop
