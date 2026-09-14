@@ -6,7 +6,7 @@
 <title>家計簿</title>
 <meta name="theme-color" content="#ffffff"/>
 <link rel="manifest" href="manifest.json"/>
-<link href="style.css?v=47.75" rel="stylesheet"/>
+<link href="style.css?v=47.77" rel="stylesheet"/>
 </head>
 <body>
 <main class="container">
@@ -31,18 +31,25 @@
 <div id="fixedEditModal" class="modal hidden"><div class="modal-box"><div class="modal-header"><h2>固定費を編集</h2><button id="closeFixedModal" class="close-btn">×</button></div><label>金額<input id="fixedEditAmount" type="number" min="0" step="100" inputmode="numeric"></label><label>カテゴリ<select id="fixedEditCategory"><option>食費</option><option>日用品</option><option>水光熱費</option><option>交通費</option><option>美容</option><option>医療関係</option><option>娯楽</option><option>外食</option><option>その他</option></select></label><label>メモ<input id="fixedEditMemo" type="text" placeholder="例)家賃など"></label><label>毎月の支払日<input id="fixedEditDay" type="number" min="1" max="31" step="1" inputmode="numeric"></label><div class="modal-reorder"><span>同じ支払日内の並び順</span><div><button id="moveFixedEditUp" type="button" class="secondary-btn">▲ 上へ</button><button id="moveFixedEditDown" type="button" class="secondary-btn">▼ 下へ</button></div></div><div class="modal-actions"><button id="cancelFixedEdit" class="secondary-btn">キャンセル</button><button id="saveFixedEdit">変更を保存</button></div></div></div>
 <div id="plannedEditModal" class="modal hidden"><div class="modal-header"><h2>予定支出を編集</h2><button id="closePlannedModal" class="close-btn">×</button></div><label>金額<input id="plannedEditAmount" type="number" min="0" step="100" inputmode="numeric"></label><label>カテゴリ<select id="plannedEditCategory"><option>食費</option><option>日用品</option><option>水光熱費</option><option>交通費</option><option>美容</option><option>医療関係</option><option>娯楽</option><option>外食</option><option>その他</option></select></label><label>メモ<input id="plannedEditMemo" type="text"></label><label>予定日<input id="plannedEditDate" type="date" placeholder="例)2026/09/08"></label><div class="modal-reorder"><span>同じ日付内の並び順</span><div><button id="movePlannedEditUp" type="button" class="secondary-btn">▲ 上へ</button><button id="movePlannedEditDown" type="button" class="secondary-btn">▼ 下へ</button></div></div><div class="modal-actions"><button id="cancelPlannedEdit" class="secondary-btn">キャンセル</button><button id="savePlannedEdit">変更を保存</button></div></div></div>
 <div id="editModal" class="modal hidden"><div class="modal-box"><div class="modal-header"><h2>支出を編集</h2><button id="closeModal" class="close-btn">×</button></div><label>金額<input id="editAmount" type="number" min="0" step="100" inputmode="numeric"></label><label>カテゴリ<select id="editCategory"><option>食費</option><option>日用品</option><option>水光熱費</option><option>交通費</option><option>美容</option><option>医療関係</option><option>娯楽</option><option>外食</option><option>その他</option></select></label><label>メモ<input id="editMemo" type="text" placeholder="例)昼ごはん"></label><label>日付<input id="editDate" type="date" placeholder="例)2026/09/08"></label><div class="modal-reorder"><span>同じ日付内の並び順</span><div><button id="moveEditUp" type="button" class="secondary-btn">▲ 上へ</button><button id="moveEditDown" type="button" class="secondary-btn">▼ 下へ</button></div></div><div class="modal-actions"><button id="deleteEditExpense" type="button" class="edit-modal-delete-btn">削除</button><button id="rollbackToPlanned" type="button" class="secondary-btn">今月の予定支出に移動</button><button id="cancelEdit" class="secondary-btn">キャンセル</button><button id="saveEdit">変更を保存</button></div></div></div>
-<div id="deleteConfirmModal" class="modal hidden"><div class="modal-box"><div class="modal-header"><h2>削除の最終確認</h2><button id="closeDeleteConfirm" class="close-btn" type="button">×</button></div><p>この支出を削除しますか？</p><div class="modal-actions"><button id="cancelDeleteConfirm" type="button" class="secondary-btn">キャンセル</button><button id="confirmDeleteExpense" type="button" class="danger-btn">削除する</button></div></div></div>
+<div id="deleteConfirmModal" class="modal hidden"><div class="modal-box"><div class="modal-header"><h2>削除の最終確認</h2><button id="closeDeleteConfirm" class="close-btn" type="button">×</button></div><p id="deleteConfirmMessage">この支出を削除しますか？</p><div class="modal-actions"><button id="cancelDeleteConfirm" type="button" class="secondary-btn">キャンセル</button><button id="confirmDeleteExpense" type="button" class="danger-btn">削除する</button></div></div></div>
 <div id="memoPopup" class="memo-popup hidden" role="status"></div><div id="inputValidation" class="validation-warning hidden"></div>
-<footer class="app-footer"><h1>家計簿 <span class="app-version">ver.47.75</span></h1><p>収入・固定費・貯金を先に整理して、今月使える金額を自動計算。</p></footer></main>
-<style>
-.stats.card,.charts.card{display:grid;background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:16px;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,.04)}
-.stats.card{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-.charts.card{grid-template-columns:1fr 1fr;gap:0 12px}
-.stats.card .section-title,.charts.card .section-title{margin-bottom:14px}
-.forecast-status.good{color:#18794e;font-weight:600}.forecast-status.danger{color:#b42318;font-weight:600}.forecast-status.neutral{color:#6b7280}
-@media(max-width:600px){.stats.card,.charts.card{grid-template-columns:1fr}}
-</style>
-<script src="app.js?v=47.75"></script>
-<script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));}</script>
+<footer class="app-footer"><h1>家計簿 <span class="app-version">ver.47.77</span></h1><p>収入・固定費・貯金を先に整理して、今月使える金額を自動計算。</p></footer></main>
+<script src="app.js?v=47.77"></script>
+<script>
+if ("serviceWorker" in navigator) {
+  let reloading = false;
+  window.addEventListener("load", async () => {
+    try {
+      const registration = await navigator.serviceWorker.register("./sw.js", { updateViaCache: "none" });
+      await registration.update();
+    } catch (e) {}
+  });
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (reloading) return;
+    reloading = true;
+    window.location.reload();
+  });
+}
+</script>
 </body>
 </html>
