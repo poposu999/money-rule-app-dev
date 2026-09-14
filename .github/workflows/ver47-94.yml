@@ -54,3 +54,5 @@ jobs:
           git add -A
           git commit -m 'ver.47.94: remove amount expression calculator'
           git push origin develop
+
+# retry after validation fix
