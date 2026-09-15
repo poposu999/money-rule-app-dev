@@ -1,0 +1,29 @@
+name: Apply ver.48.04
+
+on:
+  push:
+    branches: [develop]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+      - name: Apply patch
+        run: |
+          set -euo pipefail
+          python3 .tmp/fix4804.py
+          node --check app.js
+          rm -rf .tmp .github
+          test "$(find . -maxdepth 1 -type f | wc -l)" -eq 6
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Fix ver.48.04 migration recovery"
+          git push origin HEAD:develop
