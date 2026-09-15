@@ -23,7 +23,6 @@ jobs:
           from pathlib import Path
           import re
 
-          # app.js
           app = Path('app.js')
           js = app.read_text()
           if 'const VERSION="48.05";' not in js:
@@ -41,7 +40,6 @@ jobs:
               js = js.replace(old, new, 1)
           app.write_text(js)
 
-          # index.html version references
           idx = Path('index.html')
           html = idx.read_text()
           for old, new in [
@@ -54,7 +52,6 @@ jobs:
               html = html.replace(old, new)
           idx.write_text(html)
 
-          # style.css
           cssp = Path('style.css')
           css = cssp.read_text()
 
@@ -67,14 +64,12 @@ jobs:
                   raise SystemExit(f'CSS rule anchor missing: {selector}')
               css = css2
 
-          # No horizontal scrolling for tables or charts.
           replace_rule('.expense-table-wrap', 'overflow-x:hidden;-webkit-overflow-scrolling:auto')
           replace_rule('.bar-chart-scroll', 'overflow-x:hidden;padding-bottom:4px')
           replace_rule('.vertical-chart', 'width:100%;min-width:0;height:250px;display:flex;flex-direction:column')
           replace_rule('.bar-column', 'flex:1;min-width:0;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch;cursor:pointer;position:relative')
           replace_rule('.bar-label', 'flex:1;min-width:0;text-align:center;font-size:10px;color:#747c86;white-space:nowrap')
 
-          # Match Today text/triangle to the amount/triangle above the meter.
           if '.today-label strong{' in css:
               replace_rule('.today-label strong', 'font-size:13px;line-height:1.1')
           else:
@@ -83,15 +78,16 @@ jobs:
                   raise SystemExit('today-label anchor missing')
               css = css.replace(anchor, anchor + '.today-label span{font-size:10px;line-height:1}.today-label strong{font-size:13px;line-height:1.1}', 1)
 
-          # Mobile: keep everything inside viewport and use the same 12px/9px rhythm as the amount marker.
-          mobile = '''\n@media(max-width:680px){
-  .today-label strong{font-size:12px;line-height:1.1}
-  .today-label span{font-size:9px;line-height:1}
-  .vertical-bars{gap:2px;padding-left:2px;padding-right:2px}
-  .bar-labels{gap:2px;padding-left:2px;padding-right:2px}
-  .bar-column,.bar-label{min-width:0}
-  .expense-table-wrap,.bar-chart-scroll{overflow-x:hidden}
-}\n'''
+          mobile = (
+              '\n@media(max-width:680px){\n'
+              '  .today-label strong{font-size:12px;line-height:1.1}\n'
+              '  .today-label span{font-size:9px;line-height:1}\n'
+              '  .vertical-bars{gap:2px;padding-left:2px;padding-right:2px}\n'
+              '  .bar-labels{gap:2px;padding-left:2px;padding-right:2px}\n'
+              '  .bar-column,.bar-label{min-width:0}\n'
+              '  .expense-table-wrap,.bar-chart-scroll{overflow-x:hidden}\n'
+              '}\n'
+          )
           marker = '@media (prefers-color-scheme: dark){'
           if marker in css:
               css = css.replace(marker, mobile + marker, 1)
@@ -99,14 +95,12 @@ jobs:
               css = css.rstrip() + mobile
           cssp.write_text(css)
 
-          # README must describe only this version's changes.
-          Path('README.md').write_text('''# 家計簿アプリ\n\n## ver.48.06\n- 残り予算の予定支出・未払い固定費の補足を括弧書きへ変更\n- 支出ペースの「▲ Today」を上側の金額表示と同じサイズ感へ調整\n- 支出・予定支出・固定費テーブルの横スクロールを廃止し、操作ボタンまで画面内に表示\n- 日別・月別グラフの横スクロールを廃止し、画面幅内に収まる表示へ変更\n''')
+          Path('README.md').write_text('# 家計簿アプリ\n\n## ver.48.06\n- 残り予算の予定支出・未払い固定費の補足を括弧書きへ変更\n- 支出ペースの「▲ Today」を上側の金額表示と同じサイズ感へ調整\n- 支出・予定支出・固定費テーブルの横スクロールを廃止し、操作ボタンまで画面内に表示\n- 日別・月別グラフの横スクロールを廃止し、画面幅内に収まる表示へ変更\n')
           PY
 
           node --check app.js
           python3 - <<'PY'
           from pathlib import Path
-          import re
           js=Path('app.js').read_text()
           html=Path('index.html').read_text()
           css=Path('style.css').read_text()
@@ -127,8 +121,10 @@ jobs:
               ('today mobile', '.today-label strong{font-size:12px;line-height:1.1}' in css),
           ]
           bad=[name for name,ok in checks if not ok]
-          if bad: raise SystemExit('validation failed: '+', '.join(bad))
-          if 'min-width:640px' in css: raise SystemExit('stale graph min-width remains')
+          if bad:
+              raise SystemExit('validation failed: '+', '.join(bad))
+          if 'min-width:640px' in css:
+              raise SystemExit('stale graph min-width remains')
           PY
 
           git config user.name 'github-actions[bot]'
