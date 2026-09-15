@@ -1,6 +1,18 @@
-const KEY="moneyRuleAppV2";
-const VERSION="48.01";
-const STORAGE_KEYS={state:KEY,sections:"moneyRuleSectionPrefs",stats:"moneyRuleStatPrefs"};
+const VERSION="48.02";
+const PROD_STORAGE_KEYS={state:"moneyRuleAppV2",sections:"moneyRuleSectionPrefs",stats:"moneyRuleStatPrefs"};
+const STORAGE_KEYS={state:"moneyRuleDevAppV2",sections:"moneyRuleDevSectionPrefs",stats:"moneyRuleDevStatPrefs",initialized:"moneyRuleDevInitialized"};
+const DEV_BACKUP_KEYS=[STORAGE_KEYS.state,STORAGE_KEYS.sections,STORAGE_KEYS.stats];
+function initializeDevStorage(){
+  if(localStorage.getItem(STORAGE_KEYS.initialized)==="1")return;
+  Object.entries(PROD_STORAGE_KEYS).forEach(([name,prodKey])=>{
+    const devKey=STORAGE_KEYS[name];
+    if(localStorage.getItem(devKey)!==null)return;
+    const value=localStorage.getItem(prodKey);
+    if(value!==null)localStorage.setItem(devKey,value);
+  });
+  localStorage.setItem(STORAGE_KEYS.initialized,"1");
+}
+initializeDevStorage();
 function readStorage(key,fallback){try{const raw=localStorage.getItem(key);if(raw===null)return structuredClone(fallback);const value=JSON.parse(raw);return value&&typeof value==="object"?value:structuredClone(fallback);}catch{return structuredClone(fallback);}}
 function writeStorage(key,value){localStorage.setItem(key,JSON.stringify(value));}
 let pendingEditDelete=null;
@@ -131,8 +143,8 @@ $("moveEditUp").onclick=()=>moveExpense($("editModal").dataset.id,"up");$("moveE
 $("closePlannedModal").onclick=closePlannedEdit;$("cancelPlannedEdit").onclick=closePlannedEdit;$("plannedEditModal").onclick=e=>{if(e.target===$("plannedEditModal"))closePlannedEdit();};
 $("movePlannedEditUp").onclick=()=>movePlanned($("plannedEditModal").dataset.id,"up");$("movePlannedEditDown").onclick=()=>movePlanned($("plannedEditModal").dataset.id,"down");
 $("savePlannedEdit").onclick=()=>{const id=$("plannedEditModal").dataset.id,e=state.plannedExpenses.find(x=>String(x.id)===String(id)),amount=Number($("plannedEditAmount").value);if(!e||!amount){alert("金額を入力してください");return;}e.amount=amount;e.category=$("plannedEditCategory").value;e.memo=$("plannedEditMemo").value.trim();e.date=$("plannedEditDate").value||getToday();save();closePlannedEdit();renderPlannedExpenses();calc();};
-function exportBackup(){const data={format:"money-rule-backup",version:VERSION,exportedAt:new Date().toISOString(),localStorage:{}};for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(key&&key.startsWith("moneyRule"))data.localStorage[key]=localStorage.getItem(key);}const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=`money-rule-backup-${getToday().replaceAll("-","")}.json`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);$("backupStatus").textContent="バックアップを書き出しました。";}
-function importBackupFile(file){if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const data=JSON.parse(reader.result);if(!data||data.format!=="money-rule-backup"||!data.localStorage||typeof data.localStorage!=="object")throw new Error();if(!confirm("バックアップを読み込むと現在の家計簿データが置き換わります。続行しますか？"))return;Object.keys(data.localStorage).filter(k=>k.startsWith("moneyRule")).forEach(k=>localStorage.setItem(k,String(data.localStorage[k])));location.reload();}catch(e){alert("バックアップファイルを読み込めませんでした。");}};reader.readAsText(file);}
+function exportBackup(){const data={format:"money-rule-dev-backup",version:VERSION,environment:"development",exportedAt:new Date().toISOString(),localStorage:{}};DEV_BACKUP_KEYS.forEach(key=>{const value=localStorage.getItem(key);if(value!==null)data.localStorage[key]=value;});const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=`money-rule-dev-backup-${getToday().replaceAll("-","")}.json`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);$("backupStatus").textContent="デベロップ環境のバックアップを書き出しました。";}
+function importBackupFile(file){if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const data=JSON.parse(reader.result);if(!data||!data.localStorage||typeof data.localStorage!=="object"||!["money-rule-dev-backup","money-rule-backup"].includes(data.format))throw new Error();const restored={};if(data.format==="money-rule-dev-backup"){DEV_BACKUP_KEYS.forEach(key=>{if(Object.prototype.hasOwnProperty.call(data.localStorage,key))restored[key]=String(data.localStorage[key]);});}else{Object.entries(PROD_STORAGE_KEYS).forEach(([name,prodKey])=>{if(Object.prototype.hasOwnProperty.call(data.localStorage,prodKey))restored[STORAGE_KEYS[name]]=String(data.localStorage[prodKey]);});}if(!Object.keys(restored).length)throw new Error();if(!confirm("バックアップを読み込むとデベロップ環境の家計簿データが置き換わります。本番データには影響しません。続行しますか？"))return;DEV_BACKUP_KEYS.forEach(key=>localStorage.removeItem(key));Object.entries(restored).forEach(([key,value])=>localStorage.setItem(key,value));localStorage.setItem(STORAGE_KEYS.initialized,"1");location.reload();}catch(e){alert("バックアップファイルを読み込めませんでした。");}};reader.readAsText(file);}
 $("exportBackup").onclick=exportBackup;$("importBackupButton").onclick=()=>$("importBackup").click();$("importBackup").addEventListener("change",e=>{importBackupFile(e.target.files?.[0]);e.target.value="";});
 const sectionPrefs=readStorage(STORAGE_KEYS.sections,{}),statPrefs=readStorage(STORAGE_KEYS.stats,{});
 function applyStatPrefs(){const hidden=statPrefs.income===true;["incomeStat","extraIncomeStat"].forEach(id=>$(id)?.classList.toggle("stat-hidden",hidden));const b=$("incomeRestore")?.querySelector("button");if(b)b.textContent=hidden?"前月の収入を表示":"前月の収入を非表示";}
