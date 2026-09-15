@@ -1,3 +1,6 @@
-# kakeibo app
-\## ver.48.08
-- iPhone no hizuke nlyuuryokuran ga wakugai ni hamidasu mondai wo saishuusei- hizuke nyuuryoku no moji ga wakukunai de tatechuuou ni sorou you chousei- shisshou yotei shisshou hensyuu gamen no hizuke nyuuryoku ni iOS Safari muke hiyou chousei wo toka_
+# 家計簿アプリ
+
+## ver.48.08
+- iPhoneの日付入力欄が枠外にはみ出す問題を再修正
+- 日付入力の文字が枠内で縦中央に揃うよう調整
+- 支出・予定支出・編集画面の日付入力にiOS Safari向け表示調整を追加
