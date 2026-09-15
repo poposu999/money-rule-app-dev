@@ -1,49 +1,21 @@
-const CACHE_NAME = "money-rule-app-v48.01";
-const APP_SHELL = [
-  "./",
-  "./index.html",
-  "./style.css?v=48.01",
-  "./app.js?v=48.01",
-  "./manifest.json"
-];
+const LEGACY_DEV_CACHES=new Set(["money-rule-app-v48.01"]);
+const DEV_CACHE_PREFIX="money-rule-app-dev-";
 
-self.addEventListener("install", event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(APP_SHELL))
-      .then(() => self.skipWaiting())
-  );
+self.addEventListener("install",event=>{
+  event.waitUntil(self.skipWaiting());
 });
 
-self.addEventListener("activate", event => {
+self.addEventListener("activate",event=>{
   event.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))))
-      .then(() => self.clients.claim())
+      .then(keys=>Promise.all(keys.filter(key=>LEGACY_DEV_CACHES.has(key)||key.startsWith(DEV_CACHE_PREFIX)).map(key=>caches.delete(key))))
+      .then(()=>self.clients.claim())
   );
 });
 
-self.addEventListener("fetch", event => {
-  if (event.request.method !== "GET") return;
-  const url = new URL(event.request.url);
-  if (url.origin !== self.location.origin) return;
-  if (url.pathname.endsWith("/sw.js") || url.pathname.endsWith("/index.html") || url.pathname === "/") {
-    event.respondWith(
-      fetch(new Request(event.request, { cache: "no-store" }))
-        .then(response => response && response.ok ? response : Promise.reject(new Error("network response unavailable")))
-        .catch(() => caches.match(event.request).then(cached => cached || caches.match("./index.html")))
-    );
-    return;
-  }
-  event.respondWith(
-    fetch(event.request)
-      .then(response => {
-        if (response && response.ok) {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
-        }
-        return response;
-      })
-      .catch(() => caches.match(event.request))
-  );
+self.addEventListener("fetch",event=>{
+  if(event.request.method!=="GET")return;
+  const url=new URL(event.request.url);
+  if(url.origin!==self.location.origin)return;
+  event.respondWith(fetch(new Request(event.request,{cache:"no-store"})));
 });
