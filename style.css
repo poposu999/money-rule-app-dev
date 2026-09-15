@@ -62,7 +62,7 @@ input:focus,select:focus{border-color:#818b97;outline-color:rgba(180,190,202,.22
 hr,.split-actions{border-color:#303640}
 }
 
-/* ver.48.08 iOS date input */
+/* ver.48.09 iOS date input */
 input[type="date"]{
   display:block;
   width:100%;
@@ -121,4 +121,4 @@ input[type="date"]::-webkit-datetime-edit-fields-wrapper{
     max-inline-size:100%;
   }
 }
-/* end ver.48.08 iOS date input */
+/* end ver.48.09 iOS date input */
