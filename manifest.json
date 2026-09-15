@@ -1,6 +1,6 @@
 {
-  "name": "家計簿",
-  "short_name": "家計簿",
+  "name": "家計簿（検証環境）",
+  "short_name": "家計簿DEV",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#ffffff",
