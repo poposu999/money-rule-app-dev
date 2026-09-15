@@ -1,4 +1,4 @@
-const VERSION="48.05";
+const VERSION="48.06";
 const SCHEMA_VERSION=49;
 const PROD_STORAGE_KEYS={state:"moneyRuleAppV2",sections:"moneyRuleSectionPrefs",stats:"moneyRuleStatPrefs"};
 const LEGACY_STORAGE_KEYS={state:"moneyRuleDevAppV2",sections:"moneyRuleDevSectionPrefs",stats:"moneyRuleDevStatPrefs"};
@@ -295,7 +295,7 @@ function renderBudgetDashboard(){
     setText("dashboardRemaining","収入を入力してください");setText("dashboardRemainingNote","収入を入力してください");setText("dashboardDailyBudget","未計算");setText("dashboardDailyDays","");setText("spendingBudget","未計算");setText("plannedSavings","未計算");setText("extraIncome","未計算");setText("budgetLimitValue","—");setText("budgetSpentValue",yen(n.spent));setText("dashboardStatusLabel",future?"収入未入力":"収入を入力してください");setText("dashboardStatusMessage",future?"収入入力後に予測します。":"予算結果は収入入力後に計算します。");$("dashboardStatus").className="budget-status neutral";dailyWrap.classList.toggle("hidden",past);todayLabel.classList.add("hidden");renderPaceTimeline(null,null);return;
   }
   setText("spendingBudget",yen(n.spendingBudget));setText("plannedSavings",yen(n.plannedSavings));setText("extraIncome",yen(n.extra));setText("dashboardRemaining",yen(n.remaining));
-  let note="現在の残り予算";if(n.plannedAmount&&n.unpaidFixedAmount)note=`予定支出 ${yen(n.plannedAmount)}・未払い固定費 ${yen(n.unpaidFixedAmount)} を差し引き済み`;else if(n.plannedAmount)note=`予定支出 ${yen(n.plannedAmount)} を差し引き済み`;else if(n.unpaidFixedAmount)note=`未払い固定費 ${yen(n.unpaidFixedAmount)} を差し引き済み`;setText("dashboardRemainingNote",note);
+  let note="現在の残り予算";if(n.plannedAmount&&n.unpaidFixedAmount)note=`（予定支出 ${yen(n.plannedAmount)}・未払い固定費 ${yen(n.unpaidFixedAmount)} を差し引き済み）`;else if(n.plannedAmount)note=`（予定支出 ${yen(n.plannedAmount)} を差し引き済み）`;else if(n.unpaidFixedAmount)note=`（未払い固定費 ${yen(n.unpaidFixedAmount)} を差し引き済み）`;setText("dashboardRemainingNote",note);
   const setPaceMeter=(used,limit)=>{const raw=limit>0?used/limit*100:used>0?100:0,pct=Math.max(0,Math.min(100,Number.isFinite(raw)?raw:0));setText("budgetLimitValue",yen(Math.max(0,limit)));setText("budgetSpentValue",yen(used));$("budgetProgressBar").style.width=pct+"%";const pos=$("budgetSpentPosition");pos.style.left=pct+"%";pos.className=`pace-spent-position${pct<10?' left-edge':pct>90?' right-edge':''}`;};
   if(past){setPaceMeter(n.spent+n.plannedAmount+n.unpaidFixedAmount,n.spendingBudget);dailyWrap.classList.add("hidden");todayLabel.classList.add("hidden");renderPaceTimeline(null,null);const used=n.spent+n.plannedAmount+n.unpaidFixedAmount,over=used>n.spendingBudget;setText("dashboardStatusLabel",over?"予算超過":"予算内");setText("dashboardStatusMessage",over?`予算を${yen(used-n.spendingBudget)}超えています。`:"現在の登録内容は予算内です。");$("dashboardStatus").className=`budget-status ${over?'danger':'good'}`;return;}
   dailyWrap.classList.remove("hidden");
