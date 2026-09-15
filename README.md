@@ -1,7 +1,3 @@
-# 家計簿アプリ
-
-## ver.48.07
-- スマホでテーブル右端が見切れる問題を修正し、操作ボタンは横並びのまま画面幅内に収まるよう調整
-- 日別・月別・カテゴリ別グラフを実際の表示領域100%以内に収め、右端の見切れを修正
-- 支出・予定支出入力の日付欄がiPhoneで枠外にはみ出す問題を修正
-- 横スクロール前提の古いスマホ用 min-width 指定を削除
+# kakeibo app
+\## ver.48.08
+- iPhone no hizuke nlyuuryokuran ga wakugai ni hamidasu mondai wo saishuusei- hizuke nyuuryoku no moji ga wakukunai de tatechuuou ni sorou you chousei- shisshou yotei shisshou hensyuu gamen no hizuke nyuuryoku ni iOS Safari muke hiyou chousei wo toka_
