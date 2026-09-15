@@ -1,0 +1,40 @@
+name: Assemble ver.48.03
+
+on:
+  push:
+    branches: [develop]
+
+permissions:
+  contents: write
+
+jobs:
+  assemble:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+      - name: Assemble and verify ver.48.03
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .tmp/ver4803_*.b64 > /tmp/ver4803.tar.gz.b64
+          base64 --decode /tmp/ver4803.tar.gz.b64 > /tmp/ver4803.tar.gz
+          echo "cb44f777e26f2d74078d4a153e6bdeab28720424fd1b5bbbb0d19ba8415b5733  /tmp/ver4803.tar.gz" | sha256sum -c -
+          tar -xzf /tmp/ver4803.tar.gz -C .
+          echo "da9b1743ef69ed54516b3872d55dd9ac3aba92bd8e744ba88651231767866917  README.md" | sha256sum -c -
+          echo "6749c77be26958d80b9f2becfbc97322474a2d3d601ee469e0cdd18041d2d68f  app.js" | sha256sum -c -
+          echo "7fe8bf74253e74cd3a46986d2caffab07ca388eadd0eaa139f7e0c41500f66ae  index.html" | sha256sum -c -
+          echo "bed7af1a1598db0be0855c27fcb4ff7c72a3311aff6acc187771790bf3c75eed  manifest.json" | sha256sum -c -
+          echo "7a9690603157f3f98b3dc9352bbf69d2761832844cf9b66ef32e01e6bf250e03  style.css" | sha256sum -c -
+          node --check app.js
+          rm -rf .tmp
+          rm -f .github/workflows/assemble-ver4803.yml
+          rmdir .github/workflows .github 2>/dev/null || true
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && exit 0
+          git commit -m "Implement ver.48.03 Ver.49 monthly management"
+          git push origin HEAD:develop
