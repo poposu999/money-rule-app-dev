@@ -1,0 +1,137 @@
+name: Apply ver.48.08
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - '.github/workflows/apply-ver4808.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+      - name: Apply ver.48.08
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          # Version
+          p = Path('app.js')
+          s = p.read_text(encoding='utf-8')
+          old = 'const VERSION="48.07";'
+          assert old in s, 'app.js version marker not found'
+          p.write_text(s.replace(old, 'const VERSION="48.08";', 1), encoding='utf-8')
+
+          # HTML version references
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          assert '48.07' in s, 'index.html version refs not found'
+          p.write_text(s.replace('48.07', '48.08'), encoding='utf-8')
+
+          # iOS date input sizing / vertical centering
+          p = Path('style.css')
+          s = p.read_text(encoding='utf-8')
+          old_rule = 'input[type="date"]{display:block;width:100%;min-width:0;max-width:100%;overflow:hidden}'
+          if old_rule in s:
+              s = s.replace(old_rule, '', 1)
+          marker_start = '/* ver.48.08 iOS date input */'
+          marker_end = '/* end ver.48.08 iOS date input */'
+          if marker_start in s and marker_end in s:
+              a = s.index(marker_start)
+              b = s.index(marker_end, a) + len(marker_end)
+              s = s[:a] + s[b:]
+          s = s.rstrip() + '\n\n' + marker_start + '''
+input[type="date"]{
+  display:block;
+  width:100%;
+  min-width:0;
+  max-width:100%;
+  inline-size:100%;
+  max-inline-size:100%;
+  height:42px;
+  box-sizing:border-box;
+  padding:0 10px;
+  line-height:normal;
+  overflow:hidden;
+}
+input[type="date"]::-webkit-date-and-time-value{
+  display:flex;
+  align-items:center;
+  width:100%;
+  height:100%;
+  min-height:0;
+  margin:0;
+  padding:0;
+  text-align:left;
+  line-height:normal;
+}
+input[type="date"]::-webkit-datetime-edit{
+  display:flex;
+  align-items:center;
+  width:100%;
+  height:100%;
+  min-height:0;
+  padding:0;
+  line-height:normal;
+}
+input[type="date"]::-webkit-datetime-edit-fields-wrapper{
+  padding:0;
+}
+@supports (-webkit-touch-callout:none){
+  input[type="date"]{
+    -webkit-appearance:none;
+    appearance:none;
+  }
+}
+@media(max-width:680px){
+  .entry-panel .grid,
+  .entry-panel .grid>label,
+  .entry-panel .grid>label>input,
+  .entry-panel .grid>label>select{
+    min-width:0;
+    max-width:100%;
+  }
+  input[type="date"]{
+    width:100%;
+    min-width:0;
+    max-width:100%;
+    inline-size:100%;
+    max-inline-size:100%;
+  }
+}
+''' + marker_end + '\n'
+          p.write_text(s, encoding='utf-8')
+
+          # README: only this version's changes
+          Path('README.md').write_text('''# 家計簿アプリ
+
+## ver.48.08
+- iPhoneの日付入力欄が枠外にはみ出す問題を再修正
+- 日付入力の文字が枠内で縦中央に揃うよう調整
+- 支出・予定支出・編集画面の日付入力にiOS Safari向け表示調整を追加
+''', encoding='utf-8')
+          PY
+
+          node --check app.js
+          grep -q 'const VERSION="48.08";' app.js
+          grep -q 'style.css?v=48.08' index.html
+          grep -q 'app.js?v=48.08' index.html
+          grep -q 'ver.48.08' index.html
+          grep -q '## ver.48.08' README.md
+          grep -q -- '-webkit-appearance:none' style.css
+          grep -q -- '::-webkit-date-and-time-value' style.css
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app.js index.html style.css README.md
+          git rm .github/workflows/apply-ver4808.yml
+          git commit -m 'Fix ver.48.08 iOS date input layout'
+          git push origin develop
