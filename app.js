@@ -1,4 +1,4 @@
-const VERSION="48.10";
+const VERSION="48.11";
 const SCHEMA_VERSION=49;
 const PROD_STORAGE_KEYS={state:"moneyRuleAppV2",sections:"moneyRuleSectionPrefs",stats:"moneyRuleStatPrefs"};
 const LEGACY_STORAGE_KEYS={state:"moneyRuleDevAppV2",sections:"moneyRuleDevSectionPrefs",stats:"moneyRuleDevStatPrefs"};
@@ -25,6 +25,12 @@ initializeDevStorage();
 
 function readJson(key,fallback=null){
   try{const raw=localStorage.getItem(key);return raw===null?fallback:JSON.parse(raw);}catch{return fallback;}
+}
+function readJsonStatus(key){
+  const raw=localStorage.getItem(key);
+  if(raw===null)return {exists:false,value:null,error:null};
+  try{return {exists:true,value:JSON.parse(raw),error:null};}
+  catch(error){return {exists:true,value:null,error};}
 }
 function writeJson(key,value){localStorage.setItem(key,JSON.stringify(value));}
 function newId(prefix="id"){return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,10)}`;}
@@ -444,18 +450,51 @@ function validateLegacyState(legacy){
 }
 function uniqueLegacyId(raw,prefix,used){let id=String(raw??"");if(!id||used.has(id))id=newId(prefix);used.add(id);return id;}
 function convertLegacyState(legacy){
-  const now=currentMonthKey(),out=createEmptyState(),used=new Set(),fixedMap=new Map();out.meta.migratedFrom="48-series";out.months[now]=createMonthRecord(normalizeSettings(legacy.settings),null);out.months[now].income={entered:true,value:Math.max(0,Number(legacy.income)||0)};out.months[now].bonus={entered:true,value:Math.max(0,Number(legacy.bonus)||0)};out.memory={...DEFAULT_MEMORY,...(legacy.memory||{})};
-  (Array.isArray(legacy.fixedExpenses)?legacy.fixedExpenses:[]).forEach(f=>{const id=uniqueLegacyId(f.id,"f",used),day=Number(f.day),due=day>=1&&day<=31?{type:"day",day:Math.round(day)}:null,category=String(f.category||""),legacyAmount=Number(f.amount),amount=Number.isFinite(legacyAmount)&&legacyAmount>0?legacyAmount:0,needsReview=!category||!due||amount<=0;out.fixedExpenses.push({id,startMonth:now,endMonth:null,changes:[{effectiveMonth:now,amount,category,memo:String(f.memo||""),due}],paidMonths:{},needsReview,order:Number(f.order)||Date.now()});if(f.id!==undefined&&!fixedMap.has(String(f.id)))fixedMap.set(String(f.id),id);});
+  const now=currentMonthKey(),out=createEmptyState(),used=new Set(),fixedLegacyMap=new Map();out.meta.migratedFrom="48-series";out.months[now]=createMonthRecord(normalizeSettings(legacy.settings),null);out.months[now].income={entered:true,value:Math.max(0,Number(legacy.income)||0)};out.months[now].bonus={entered:true,value:Math.max(0,Number(legacy.bonus)||0)};out.memory={...DEFAULT_MEMORY,...(legacy.memory||{})};
+  (Array.isArray(legacy.fixedExpenses)?legacy.fixedExpenses:[]).forEach(f=>{const id=uniqueLegacyId(f.id,"f",used),day=Number(f.day),due=day>=1&&day<=31?{type:"day",day:Math.round(day)}:null,category=String(f.category||""),legacyAmount=Number(f.amount),amount=Number.isFinite(legacyAmount)&&legacyAmount>0?legacyAmount:0,needsReview=!category||!due||amount<=0;out.fixedExpenses.push({id,startMonth:now,endMonth:null,changes:[{effectiveMonth:now,amount,category,memo:String(f.memo||""),due}],paidMonths:{},needsReview,order:Number(f.order)||Date.now()});if(f.id!==undefined){const legacyKey=String(f.id),matches=fixedLegacyMap.get(legacyKey)||[];matches.push(id);fixedLegacyMap.set(legacyKey,matches);}});
   const plannedLegacyMap=new Map();(Array.isArray(legacy.plannedExpenses)?legacy.plannedExpenses:[]).forEach(p=>{const id=uniqueLegacyId(p.id,"p",used);out.plannedExpenses.push({id,amount:Math.max(0,Number(p.amount)||0),category:String(p.category||"その他"),memo:String(p.memo||""),date:String(p.date),order:Number(p.order)||Date.now(),status:"pending",confirmedExpenseId:null});if(p.id!==undefined){const key=String(p.id),list=plannedLegacyMap.get(key)||[];list.push(id);plannedLegacyMap.set(key,list);}});
-  (Array.isArray(legacy.expenses)?legacy.expenses:[]).forEach(e=>{const id=uniqueLegacyId(e.id,"e",used),item={id,amount:Math.max(0,Number(e.amount)||0),category:String(e.category||"その他"),memo:String(e.memo||""),date:String(e.date),order:Number(e.order)||Date.now(),origin:null};if(e.fixedId!==undefined&&fixedMap.has(String(e.fixedId))){const fid=fixedMap.get(String(e.fixedId)),sourceMonth=validMonthKey(String(e.fixedMonth||""))?String(e.fixedMonth):monthOfDate(item.date),snapshot={amount:item.amount,category:item.category,memo:item.memo,date:item.date};const f=out.fixedExpenses.find(x=>x.id===fid);if(f&&sourceMonth===now){item.origin={type:"fixed",sourceId:fid,sourceMonth,snapshot,legacy:true};f.paidMonths[now]={expenseId:id,confirmedAt:"migration"};}else{item.legacyOrigin={type:"fixed",sourceId:fid,sourceMonth,snapshot,actionable:false};}}else if(e.plannedSourceId!==undefined){const legacyKey=String(e.plannedSourceId),matches=plannedLegacyMap.get(legacyKey)||[];if(matches.length===1){const pid=matches[0],p=out.plannedExpenses.find(x=>String(x.id)===String(pid));if(p){p.status="confirmed";p.confirmedExpenseId=id;item.origin={type:"planned",sourceId:pid,sourceMonth:monthOfDate(item.date),snapshot:{amount:item.amount,category:item.category,memo:item.memo,date:item.date},legacy:true};}}else if(matches.length===0){const pid=uniqueLegacyId(e.plannedSourceId,"p",used);out.plannedExpenses.push({id:pid,amount:item.amount,category:item.category,memo:item.memo,date:item.date,order:item.order,status:"confirmed",confirmedExpenseId:id,migratedFromActual:true});item.origin={type:"planned",sourceId:pid,sourceMonth:monthOfDate(item.date),snapshot:{amount:item.amount,category:item.category,memo:item.memo,date:item.date},legacy:true};}else{item.legacyOrigin={type:"planned",legacySourceId:legacyKey,sourceMonth:monthOfDate(item.date),actionable:false};}}out.expenses.push(item);});
+  (Array.isArray(legacy.expenses)?legacy.expenses:[]).forEach(e=>{const id=uniqueLegacyId(e.id,"e",used),item={id,amount:Math.max(0,Number(e.amount)||0),category:String(e.category||"その他"),memo:String(e.memo||""),date:String(e.date),order:Number(e.order)||Date.now(),origin:null};const fixedLegacyKey=e.fixedId!==undefined?String(e.fixedId):null,fixedMatches=fixedLegacyKey===null?[]:(fixedLegacyMap.get(fixedLegacyKey)||[]);if(fixedMatches.length===1){const fid=fixedMatches[0],sourceMonth=validMonthKey(String(e.fixedMonth||""))?String(e.fixedMonth):monthOfDate(item.date),snapshot={amount:item.amount,category:item.category,memo:item.memo,date:item.date};const f=out.fixedExpenses.find(x=>x.id===fid);if(f&&sourceMonth===now){item.origin={type:"fixed",sourceId:fid,sourceMonth,snapshot,legacy:true};f.paidMonths[now]={expenseId:id,confirmedAt:"migration"};}else{item.legacyOrigin={type:"fixed",sourceId:fid,sourceMonth,snapshot,actionable:false};}}else if(fixedMatches.length>1){const sourceMonth=validMonthKey(String(e.fixedMonth||""))?String(e.fixedMonth):monthOfDate(item.date);item.legacyOrigin={type:"fixed",legacySourceId:fixedLegacyKey,sourceMonth,actionable:false};}else if(e.plannedSourceId!==undefined){const legacyKey=String(e.plannedSourceId),matches=plannedLegacyMap.get(legacyKey)||[];if(matches.length===1){const pid=matches[0],p=out.plannedExpenses.find(x=>String(x.id)===String(pid));if(p){p.status="confirmed";p.confirmedExpenseId=id;item.origin={type:"planned",sourceId:pid,sourceMonth:monthOfDate(item.date),snapshot:{amount:item.amount,category:item.category,memo:item.memo,date:item.date},legacy:true};}}else if(matches.length===0){const pid=uniqueLegacyId(e.plannedSourceId,"p",used);out.plannedExpenses.push({id:pid,amount:item.amount,category:item.category,memo:item.memo,date:item.date,order:item.order,status:"confirmed",confirmedExpenseId:id,migratedFromActual:true});item.origin={type:"planned",sourceId:pid,sourceMonth:monthOfDate(item.date),snapshot:{amount:item.amount,category:item.category,memo:item.memo,date:item.date},legacy:true};}else{item.legacyOrigin={type:"planned",legacySourceId:legacyKey,sourceMonth:monthOfDate(item.date),actionable:false};}}out.expenses.push(item);});
   return out;
 }
-function exportLegacyBackupForMigration(){const data={format:"money-rule-dev-backup",version:"48.02",schemaVersion:48,environment:"development",exportedAt:new Date().toISOString(),localStorage:{}};[LEGACY_STORAGE_KEYS.state,LEGACY_STORAGE_KEYS.sections,LEGACY_STORAGE_KEYS.stats].forEach(k=>{const v=localStorage.getItem(k);if(v!==null)data.localStorage[k]=v;});downloadJson(data,`money-rule-pre-v49-${getToday().replaceAll('-','')}.json`);migrationBackupReady=true;$("startMigration").disabled=false;setText("migrationStatus","バックアップを書き出しました。移行を開始できます。");}
+function exportLegacyBackupForMigration(){
+  const data={format:"money-rule-dev-backup",version:"48.02",schemaVersion:48,environment:"development",exportedAt:new Date().toISOString(),localStorage:{}};
+  [LEGACY_STORAGE_KEYS.state,LEGACY_STORAGE_KEYS.sections,LEGACY_STORAGE_KEYS.stats].forEach(k=>{const v=localStorage.getItem(k);if(v!==null)data.localStorage[k]=v;});
+  downloadJson(data,`money-rule-pre-v49-${getToday().replaceAll('-', '')}.json`);
+  migrationBackupReady=true;
+  const legacyStatus=readJsonStatus(LEGACY_STORAGE_KEYS.state),canMigrate=legacyStatus.exists&&!legacyStatus.error;
+  $("startMigration").disabled=!canMigrate;
+  setText("migrationStatus",canMigrate?"バックアップを書き出しました。移行を開始できます。":"バックアップを書き出しました。旧データのJSONが破損しているため、新規データは作成せず停止しています。データを修正して再読み込みしてください。");
+}
 function renderMigrationErrors(errors,legacy){const box=$("migrationErrors");box.innerHTML=errors.map((er,i)=>`<div class="migration-error-item"><strong>${escapeHtml(er.message)}</strong>${er.field==="date"?`<div class="migration-fix-row"><input type="date" data-migration-fix-date="${i}"><button type="button" data-save-migration-fix="${i}">日付を修正</button></div>`:''}</div>`).join("");box.querySelectorAll("[data-save-migration-fix]").forEach(b=>b.addEventListener("click",()=>{const er=errors[Number(b.dataset.saveMigrationFix)],input=box.querySelector(`[data-migration-fix-date="${b.dataset.saveMigrationFix}"]`);if(!er||!input||!isValidDateString(input.value))return alert("正しい日付を入力してください。");const arr=er.type==="支出"?legacy.expenses:legacy.plannedExpenses;if(!Array.isArray(arr)||!arr[er.index])return;arr[er.index].date=input.value;writeJson(LEGACY_STORAGE_KEYS.state,legacy);setText("migrationStatus","旧データの日付を修正しました。もう一度「移行を開始」を押してください。");}));}
-function startMigration(){if(!migrationBackupReady)return alert("先にバックアップを保存してください。");const legacy=readJson(LEGACY_STORAGE_KEYS.state,null);const check=validateLegacyState(legacy);if(check.errors.length){setText("migrationStatus",`移行を中止しました。${check.errors.length}件の問題があります。旧データは変更していません。`);renderMigrationErrors(check.errors,legacy);return;}const converted=convertLegacyState(legacy);const issues=collectIntegrityIssues(converted).filter(x=>x.includes("不正な日付")||x.includes("重複ID"));if(issues.length){setText("migrationStatus","移行後データの検証に失敗しました。旧データは変更していません。");return;}localStorage.setItem(STORAGE_KEYS.state,JSON.stringify(converted));const verify=normalizeCurrentState(readJson(STORAGE_KEYS.state,null));if(!verify){localStorage.removeItem(STORAGE_KEYS.state);setText("migrationStatus","保存後の検証に失敗しました。旧データは変更していません。");return;}localStorage.removeItem(LEGACY_STORAGE_KEYS.state);localStorage.setItem(STORAGE_KEYS.migrated,"complete");sessionStorage.setItem("moneyRuleDevV49MigrationCompleted","1");setText("migrationStatus","Ver.49へのデータ移行が完了しました。");setTimeout(()=>location.reload(),700);}
-
+function startMigration(){
+  if(!migrationBackupReady)return alert("先にバックアップを保存してください。");
+  const legacyStatus=readJsonStatus(LEGACY_STORAGE_KEYS.state);
+  if(legacyStatus.error){$("startMigration").disabled=true;setText("migrationStatus","移行を中止しました。旧データのJSONを読み込めません。バックアップを保持したままデータを修正し、再読み込みしてください。");return;}
+  const legacy=legacyStatus.value,check=validateLegacyState(legacy);
+  if(check.errors.length){setText("migrationStatus",`移行を中止しました。${check.errors.length}件の問題があります。旧データは変更していません。`);renderMigrationErrors(check.errors,legacy);return;}
+  const converted=convertLegacyState(legacy);
+  const issues=collectIntegrityIssues(converted).filter(x=>x.includes("不正な日付")||x.includes("重複ID"));
+  if(issues.length){setText("migrationStatus","移行後データの検証に失敗しました。旧データは変更していません。");return;}
+  localStorage.setItem(STORAGE_KEYS.state,JSON.stringify(converted));
+  const verify=normalizeCurrentState(readJson(STORAGE_KEYS.state,null));
+  if(!verify){localStorage.removeItem(STORAGE_KEYS.state);setText("migrationStatus","保存後の検証に失敗しました。旧データは変更していません。");return;}
+  localStorage.removeItem(LEGACY_STORAGE_KEYS.state);
+  localStorage.setItem(STORAGE_KEYS.migrated,"complete");
+  sessionStorage.setItem("moneyRuleDevV49MigrationCompleted","1");
+  setText("migrationStatus","Ver.49へのデータ移行が完了しました。");
+  setTimeout(()=>location.reload(),700);
+}
 
 function setMigrationStateStatus(text){const el=$("migrationStateStatus");if(el)el.textContent=text;}
+function showBrokenLegacyMigrationGate(){
+  $("migrationModal").classList.remove("hidden");
+  migrationBackupReady=false;
+  $("startMigration").disabled=true;
+  setText("migrationStatus","旧ver.48.02検証データを読み込めません。新規Ver.49データは作成せず停止しています。先にバックアップを保存し、旧データを修正して再読み込みしてください。");
+  setMigrationStateStatus("移行停止：旧ver.48.02検証データのJSONが破損しています");
+  return true;
+}
+
 function showLegacyMigrationGate(legacyRaw,normalized){
   if(!legacyRaw)return false;
   $("migrationModal").classList.remove("hidden");
@@ -496,8 +535,9 @@ function bindEvents(){
 function bootstrap(){
   buildCategoryControls();buildDueSelect("fixedDue");buildDueSelect("fixedEditDue");bindEvents();
   const currentRaw=readJson(STORAGE_KEYS.state,null),normalized=normalizeCurrentState(currentRaw);
-  const legacyRaw=readJson(LEGACY_STORAGE_KEYS.state,null);
+  const legacyStatus=readJsonStatus(LEGACY_STORAGE_KEYS.state),legacyRaw=legacyStatus.value;
   const migrationMarker=localStorage.getItem(STORAGE_KEYS.migrated);
+  if(legacyStatus.exists&&legacyStatus.error&&migrationMarker!=="complete"){showBrokenLegacyMigrationGate();return;}
 
   if(legacyRaw&&migrationMarker!=="complete"){showLegacyMigrationGate(legacyRaw,normalized);return;}
 
