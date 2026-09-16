@@ -1,0 +1,96 @@
+name: Ver.48.13 UI adjustments
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - '.github/workflows/ver4813-ui.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.head_commit.message != 'Polish graph labels and buttons for ver.48.13'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+
+      - name: Apply ver.48.13 adjustments
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(text, old, new, label):
+              if old not in text:
+                  raise SystemExit(f'{label}: source not found')
+              return text.replace(old, new, 1)
+
+          app = Path('app.js')
+          s = app.read_text(encoding='utf-8')
+          s = replace_once(s, 'const VERSION="48.12";', 'const VERSION="48.13";', 'app version')
+          app.write_text(s, encoding='utf-8')
+
+          html_path = Path('index.html')
+          html = html_path.read_text(encoding='utf-8')
+          if html.count('48.12') < 3:
+              raise SystemExit('expected ver.48.12 references in index.html')
+          html = html.replace('48.12', '48.13')
+          html_path.write_text(html, encoding='utf-8')
+
+          css_path = Path('style.css')
+          css = css_path.read_text(encoding='utf-8')
+          css = replace_once(css,
+              '.confirm-btn{background:#3f4854}',
+              '.confirm-btn{background:#737c87}',
+              'confirm button color')
+          css = replace_once(css,
+              '.category-bar-track{height:18px;border-radius:5px;background:#edf0f2;display:flex;overflow:hidden;cursor:pointer}',
+              '.category-bar-track{height:18px;border-radius:5px;background:transparent;display:flex;overflow:hidden;cursor:pointer}',
+              'category track background')
+          css = replace_once(css,
+              '.vertical-bars{width:100%;min-width:0;max-width:100%;height:210px;display:flex;align-items:flex-end;gap:3px;border-bottom:1px solid #cfd4da;padding:0 4px}',
+              '.vertical-bars{width:100%;min-width:0;max-width:100%;height:210px;display:flex;align-items:flex-end;gap:3px;border-bottom:1px solid #cfd4da;padding:0 10px 0 4px}',
+              'vertical bars right padding')
+          css = replace_once(css,
+              '.bar-labels{width:100%;min-width:0;max-width:100%;height:36px;display:flex;gap:3px;padding:5px 4px 0}',
+              '.bar-labels{width:100%;min-width:0;max-width:100%;height:36px;display:flex;gap:3px;padding:5px 10px 0 4px}',
+              'bar labels right padding')
+          css = replace_once(css,
+              '.chart-grid-lines{position:absolute;z-index:0;inset:0 4px 0 4px;display:flex;flex-direction:column;justify-content:space-between;pointer-events:none}',
+              '.chart-grid-lines{position:absolute;z-index:0;inset:0 10px 0 4px;display:flex;flex-direction:column;justify-content:space-between;pointer-events:none}',
+              'chart grid right inset')
+          css_path.write_text(css, encoding='utf-8')
+
+          Path('README.md').write_text('''# 家計簿アプリ\n\n## ver.48.13\n- カテゴリ別支出グラフの未使用部分に表示されていた薄い背景メーターを削除\n- 日ごと・月別グラフの右端に余白を確保し、月末側の日付ラベルが見切れないよう調整\n- 「支出に確定」ボタンを従来より薄いグレーへ調整\n''', encoding='utf-8')
+          PY
+
+      - name: Validate
+        shell: bash
+        run: |
+          node --check app.js
+          node --check sw.js
+          git diff --check
+          grep -q 'const VERSION="48.13"' app.js
+          grep -q 'ver.48.13' index.html
+          grep -q 'style.css?v=48.13' index.html
+          grep -q 'app.js?v=48.13' index.html
+          grep -q '.confirm-btn{background:#737c87}' style.css
+          grep -q 'category-bar-track{height:18px;border-radius:5px;background:transparent' style.css
+          grep -q 'padding:0 10px 0 4px' style.css
+          grep -q 'padding:5px 10px 0 4px' style.css
+          grep -q 'inset:0 10px 0 4px' style.css
+          test "$(grep -o 'const VERSION="48.13"' app.js | wc -l)" -eq 1
+
+      - name: Commit update
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app.js index.html style.css README.md
+          git commit -m 'Polish graph labels and buttons for ver.48.13'
+          git push origin develop
