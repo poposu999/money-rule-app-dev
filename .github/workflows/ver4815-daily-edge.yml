@@ -1,0 +1,61 @@
+name: Ver.48.15 daily chart edge fix
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - '.github/workflows/ver4815-daily-edge.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+
+      - name: Apply ver.48.15 fix
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          # app.js version
+          p=Path('app.js')
+          s=p.read_text(encoding='utf-8')
+          if 'const VERSION="48.14";' not in s:
+              raise SystemExit('expected app.js ver.48.14')
+          s=s.replace('const VERSION="48.14";','const VERSION="48.15";',1)
+          p.write_text(s,encoding='utf-8')
+
+          # index.html cache/version references
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          if '48.14' not in s:
+              raise SystemExit('expected index.html ver.48.14 references')
+          s=s.replace('48.14','48.15')
+          p.write_text(s,encoding='utf-8')
+
+          # style.css: shrink only the daily chart plotting area so the month-end label stays inside
+          p=Path('style.css')
+          s=p.read_text(encoding='utf-8')
+          s=re.sub(r'\n?/\* ver\.48\.14 daily edge labels \*/.*?(?=\n/\*|\Z)','',s,flags=re.S)
+          s += '''\n/* ver.48.15 daily chart edge fix */\n#dailyChart .vertical-bars{padding-right:24px}\n#dailyChart .bar-labels{padding-right:24px}\n#dailyChart .chart-grid-lines{right:24px}\n#dailyChart .bar-label:first-child{text-align:left}\n#dailyChart .bar-label:last-child{text-align:right}\n'''
+          p.write_text(s,encoding='utf-8')
+
+          # README: this version only
+          Path('README.md').write_text('''# 家計簿 ver.48.15（検証版）\n\n## ver.48.15の変更点\n- 日ごとの支出グラフの描画範囲を右側だけ少し内側へ調整し、30日・31日など月末の日付ラベルが見切れないよう修正。\n''',encoding='utf-8')
+          PY
+
+          node --check app.js
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app.js index.html style.css README.md
+          git commit -m 'Fix daily chart edge labels for ver.48.15'
+          git push origin develop
