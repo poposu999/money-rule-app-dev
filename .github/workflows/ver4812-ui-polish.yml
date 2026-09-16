@@ -1,0 +1,174 @@
+name: Ver.48.12 UI polish
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - '.github/workflows/ver4812-ui-polish.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.head_commit.message != 'Polish graphs and confirmation UI for ver.48.12'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+
+      - name: Apply ver.48.12 changes
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          def replace_once(text, old, new, label):
+              if old not in text:
+                  raise SystemExit(f'{label}: source not found')
+              return text.replace(old, new, 1)
+
+          p=Path('app.js')
+          s=p.read_text(encoding='utf-8')
+          s=replace_once(s,'const VERSION="48.11";','const VERSION="48.12";','version')
+          s=replace_once(s,'let migrationBackupReady=false;\nconst sessionDates=', 'let migrationBackupReady=false;\nlet appConfirmResolver=null;\nconst sessionDates=', 'confirm state')
+
+          old='''function hasUnsavedChanges(){return dirtyAreas.size>0;}\nfunction bindDirtyTracking(){'''
+          new='''function hasUnsavedChanges(){return dirtyAreas.size>0;}\nfunction closeAppConfirm(result=false){\n  $("appConfirmModal")?.classList.add("hidden");\n  const resolve=appConfirmResolver;appConfirmResolver=null;\n  if(resolve)resolve(Boolean(result));\n}\nfunction appConfirm(message,{title="確認",confirmText="実行する",danger=false}={}){\n  if(appConfirmResolver)closeAppConfirm(false);\n  setText("appConfirmTitle",title);setText("appConfirmMessage",String(message||""));\n  const accept=$("acceptAppConfirm");if(accept){accept.textContent=confirmText;accept.classList.toggle("danger-btn",Boolean(danger));}\n  $("appConfirmModal")?.classList.remove("hidden");\n  return new Promise(resolve=>{appConfirmResolver=resolve;});\n}\nfunction bindDirtyTracking(){'''
+          s=replace_once(s,old,new,'app confirm helpers')
+
+          old='''function confirmDiscardUnsaved(){return !hasUnsavedChanges()||confirm("保存されていない変更があります。入力内容を破棄して月を移動しますか？");}'''
+          new='''async function confirmDiscardUnsaved(){return !hasUnsavedChanges()||await appConfirm("保存されていない変更があります。\n入力内容を破棄して月を移動しますか？",{title:"未保存の変更",confirmText:"破棄して移動",danger:true});}'''
+          s=replace_once(s,old,new,'discard confirm')
+
+          old='''function confirmCrossMonth(source,dest,kind="項目"){\n  if(source===dest)return true;\n  return confirm(`${kind}の日付を別の月へ変更します。\\n\\n${monthLabel(source)} → ${monthLabel(dest)}\\n\\n${monthLabel(dest)}のデータとして保存します。続行しますか？`);\n}'''
+          new='''async function confirmCrossMonth(source,dest,kind="項目"){\n  if(source===dest)return true;\n  return await appConfirm(`${kind}の日付を別の月へ変更します。\\n\\n${monthLabel(source)} → ${monthLabel(dest)}\\n\\n${monthLabel(dest)}のデータとして保存します。`,{title:"月をまたいで移動",confirmText:"移動する"});\n}'''
+          s=replace_once(s,old,new,'cross month confirm')
+
+          s=replace_once(s,'function switchMonth(next,{force=false}={}){\n  if(!monthWithinAllowedRange(next))return;\n  if(!force&&!confirmDiscardUnsaved())return;', 'async function switchMonth(next,{force=false}={}){\n  if(!monthWithinAllowedRange(next))return;\n  if(!force&&!(await confirmDiscardUnsaved()))return;', 'switch month async')
+
+          scale_helpers='''function niceChartScale(maxValue){\n  const value=Math.max(0,Number(maxValue)||0);if(!value)return {max:0,ticks:[0]};\n  const rough=value/4,power=Math.pow(10,Math.floor(Math.log10(Math.max(1,rough)))),ratio=rough/power;\n  const nice=ratio<=1?1:ratio<=2?2:ratio<=2.5?2.5:ratio<=5?5:10,step=Math.max(1,nice*power),top=Math.ceil(value/step)*step,ticks=[];\n  for(let v=top;v>=0;v-=step)ticks.push(Math.max(0,Math.round(v)));\n  if(ticks[ticks.length-1]!==0)ticks.push(0);\n  return {max:top,ticks};\n}\nfunction chartAxisHtml(scale){return `<div class="chart-y-axis" aria-hidden="true">${scale.ticks.map(v=>`<span>${yen(v)}</span>`).join("")}</div>`;}\nfunction chartGridHtml(scale){return `<div class="chart-grid-lines" aria-hidden="true">${scale.ticks.map(()=>'<span></span>').join("")}</div>`;}\n'''
+          marker='function renderDailyChart(){\n'
+          if marker not in s: raise SystemExit('daily chart marker not found')
+          s=s.replace(marker,scale_helpers+marker,1)
+
+          daily_pattern=r'function renderDailyChart\(\)\{.*?\n\}\nfunction renderMonthlyChart\(\)\{'
+          daily_new='''function renderDailyChart(){\n  const data=sourceDataForMonth(selectedMonth),tot=sourceTotals(data),days=daysInMonth(selectedMonth),vals=Array.from({length:days},()=>({actual:0,planned:0,fixed:0}));const add=(arr,type)=>arr.forEach(e=>{const d=Number(String(e.date||"").slice(8,10));if(d>=1&&d<=days)vals[d-1][type]+=Number(e.amount||0);});add(data.actual,"actual");add(data.planned,"planned");add(data.fixed,"fixed");const totals=vals.map(v=>v.actual+v.planned+v.fixed),max=Math.max(0,...totals),container=$("dailyChart");if(!max){container.innerHTML='<div class="chart-empty">表示できる支出データがありません</div>';return;}const scale=niceChartScale(max),labelDays=new Set([1,5,10,15,20,25,days]);container.innerHTML=legendHtml(tot)+`<div class="vertical-chart-layout">${chartAxisHtml(scale)}<div class="vertical-chart"><div class="vertical-bars-area">${chartGridHtml(scale)}<div class="vertical-bars">${vals.map((v,i)=>{const total=totals[i],h=scale.max?total/scale.max*100:0;return `<div class="bar-column" data-day="${i+1}"><div class="bar-stack" style="height:${h}%"><span class="bar-segment stack-actual" style="height:${total?v.actual/total*100:0}%"></span><span class="bar-segment stack-planned" style="height:${total?v.planned/total*100:0}%"></span><span class="bar-segment stack-fixed" style="height:${total?v.fixed/total*100:0}%"></span></div></div>`}).join("")}</div></div><div class="bar-labels">${vals.map((_,i)=>`<span class="bar-label">${labelDays.has(i+1)?i+1:''}</span>`).join("")}</div></div></div>`;container.querySelectorAll("[data-day]").forEach(el=>el.addEventListener("click",ev=>{const d=Number(el.dataset.day);popupBreakdown(`${monthLabel(selectedMonth)}${d}日`,vals[d-1],ev);}));\n}\nfunction renderMonthlyChart(){'''
+          s,n=re.subn(daily_pattern,daily_new,s,count=1,flags=re.S)
+          if n!=1: raise SystemExit(f'daily chart replacement count={n}')
+
+          monthly_pattern=r'function renderMonthlyChart\(\)\{.*?\n\}\n\nfunction nextOrderForDate'
+          monthly_new='''function renderMonthlyChart(){\n  const keys=[];for(let i=5;i>=0;i--)keys.push(addMonths(selectedMonth,-i));const rows=keys.map(k=>{const v=sourceTotals(sourceDataForMonth(k));return {key:k,...v,total:v.actual+v.planned+v.fixed};}),max=Math.max(0,...rows.map(r=>r.total)),container=$("monthlyChart"),sum={actual:rows.reduce((s,r)=>s+r.actual,0),planned:rows.reduce((s,r)=>s+r.planned,0),fixed:rows.reduce((s,r)=>s+r.fixed,0)};if(!max){const msg=isFutureSelected()&&!monthExpenses(selectedMonth).length&&!monthPendingPlanned(selectedMonth).length&&!unpaidFixedEntries(selectedMonth).length?"予定されている支出はありません":"表示できる支出データがありません";container.innerHTML=`<div class="chart-empty">${msg}</div>`;return;}const scale=niceChartScale(max);container.innerHTML=legendHtml(sum)+`<div class="vertical-chart-layout">${chartAxisHtml(scale)}<div class="vertical-chart"><div class="vertical-bars-area">${chartGridHtml(scale)}<div class="vertical-bars">${rows.map(r=>{const h=scale.max?r.total/scale.max*100:0;return `<div class="bar-column" data-month-bar="${r.key}"><div class="bar-stack" style="height:${h}%"><span class="bar-segment stack-actual" style="height:${r.total?r.actual/r.total*100:0}%"></span><span class="bar-segment stack-planned" style="height:${r.total?r.planned/r.total*100:0}%"></span><span class="bar-segment stack-fixed" style="height:${r.total?r.fixed/r.total*100:0}%"></span></div></div>`}).join("")}</div></div><div class="bar-labels">${rows.map(r=>`<span class="bar-label">${shortMonthLabel(r.key)}</span>`).join("")}</div></div></div>`;container.querySelectorAll("[data-month-bar]").forEach(el=>el.addEventListener("click",ev=>{const r=rows.find(x=>x.key===el.dataset.monthBar);popupBreakdown(monthLabel(r.key),r,ev);}));\n}\n\nfunction nextOrderForDate'''
+          s,n=re.subn(monthly_pattern,monthly_new,s,count=1,flags=re.S)
+          if n!=1: raise SystemExit(f'monthly chart replacement count={n}')
+
+          old=re.search(r'function confirmPlanned\(id\)\{.*?\}\nfunction confirmFixed\(id\)\{.*?\}\n',s,re.S)
+          if not old: raise SystemExit('confirm planned/fixed block not found')
+          new='''async function confirmPlanned(id){const p=getPlannedSource(id);if(!p||p.status==="confirmed")return;const message=["予定支出を支出に確定しますか？",`日付：${formatExpenseDate(p.date)}`,`カテゴリ：${p.category||"未設定"}`,`メモ：${String(p.memo||"").trim()||"なし"}`,`金額：${yen(p.amount)}`].join("\\n");if(!(await appConfirm(message,{title:"支出に確定",confirmText:"支出に確定"})))return;const e={id:newId("e"),amount:p.amount,category:p.category,memo:p.memo||"",date:p.date,order:nextOrderForDate(state.expenses,p.date),origin:{type:"planned",sourceId:p.id,sourceMonth:monthOfDate(p.date),snapshot:{amount:p.amount,category:p.category,memo:p.memo||"",date:p.date}}};state.expenses.push(e);p.status="confirmed";p.confirmedExpenseId=e.id;save();renderAll();}\nasync function confirmFixed(id){const f=getFixedSource(id),config=configForFixedMonth(f,selectedMonth);if(!f||!config||fixedIsPaid(f,selectedMonth)||!config.due)return;const date=fixedDueDate(f,selectedMonth,config),message=["固定費を支出に確定しますか？",`日付：${formatExpenseDate(date)}`,`カテゴリ：${config.category||"未設定"}`,`メモ：${String(config.memo||"").trim()||"なし"}`,`金額：${yen(config.amount)}`].join("\\n");if(!(await appConfirm(message,{title:"支出に確定",confirmText:"支出に確定"})))return;const e={id:newId("e"),amount:config.amount,category:config.category||"未設定",memo:config.memo||"",date,order:nextOrderForDate(state.expenses,date),origin:{type:"fixed",sourceId:f.id,sourceMonth:selectedMonth,snapshot:{amount:config.amount,category:config.category||"未設定",memo:config.memo||"",date}}};state.expenses.push(e);f.paidMonths[selectedMonth]={expenseId:e.id,confirmedAt:new Date().toISOString()};save();renderAll();}\n'''
+          s=s[:old.start()]+new+s[old.end():]
+
+          unpay_pattern=r'function unpayFixed\(id,month=selectedMonth\)\{.*?\}\nfunction rollbackPlannedExpense\(e\)\{.*?\}\nfunction rollbackFixedExpense\(e\)\{.*?\}\n'
+          unpay_new='''async function unpayFixed(id,month=selectedMonth){const f=getFixedSource(id),info=fixedPaidInfo(f,month);if(!f||!info)return false;const e=state.expenses.find(x=>String(x.id)===String(info.expenseId)),edited=e&&expenseChangedFromSnapshot(e);const message=edited?"手動編集した実支出も削除されます。\\n実支出を削除して固定費を未払いへ戻しますか？":"実支出を削除して固定費を未払いへ戻しますか？";if(!(await appConfirm(message,{title:"固定費を未払いに戻す",confirmText:"未払いに戻す",danger:true})))return false;if(e)state.expenses=state.expenses.filter(x=>String(x.id)!==String(e.id));delete f.paidMonths[month];save();renderAll();return true;}\nasync function rollbackPlannedExpense(e){const p=getPlannedSource(e.origin?.sourceId);if(!p)return alert("元の予定支出が見つかりません。");if(!(await appConfirm("実支出を削除して予定支出へ戻しますか？",{title:"予定支出に戻す",confirmText:"予定支出に戻す",danger:true})))return;p.amount=e.amount;p.category=e.category;p.memo=e.memo||"";p.date=e.date;p.order=nextOrderForDate(state.plannedExpenses,p.date);p.status="pending";p.confirmedExpenseId=null;state.expenses=state.expenses.filter(x=>String(x.id)!==String(e.id));rememberSessionDate("planned",p.date);save();closeEdit();const dest=monthOfDate(p.date);if(dest!==selectedMonth){switchMonth(dest,{force:true});return;}renderAll();}\nasync function rollbackFixedExpense(e){const month=e.origin?.sourceMonth,f=getFixedSource(e.origin?.sourceId);if(!f||!month)return alert("元の固定費が見つかりません。");if(!(await unpayFixed(f.id,month)))return;closeEdit();if(month!==selectedMonth)switchMonth(month,{force:true});}\n'''
+          s,n=re.subn(unpay_pattern,unpay_new,s,count=1,flags=re.S)
+          if n!=1: raise SystemExit(f'rollback block replacement count={n}')
+
+          old='''function deleteFixedFromMonth(){const f=getFixedSource($("fixedEditModal").dataset.id);if(!f)return;if(!confirm(`${monthLabel(selectedMonth)}以降の固定費設定を削除します。\\n過去に確定した実支出は削除されません。続行しますか？`))return;f.endMonth=selectedMonth;f.changes=(f.changes||[]).filter(c=>compareMonth(c.effectiveMonth,selectedMonth)<0);save();closeFixedEdit();renderAll();}\nfunction deleteFixedCompletely(){const f=getFixedSource($("fixedEditModal").dataset.id);if(!f)return;if(!confirm("この固定費を完全削除します。\\n\\nすべての固定費設定・変更履歴が削除されます。\\n確定済みの実支出は通常の支出として残ります。続行しますか？"))return;state.expenses.forEach(e=>{if(e.origin?.type==="fixed"&&String(e.origin.sourceId)===String(f.id))e.origin=null;});state.fixedExpenses=state.fixedExpenses.filter(x=>String(x.id)!==String(f.id));save();closeFixedEdit();renderAll();}'''
+          new='''async function deleteFixedFromMonth(){const f=getFixedSource($("fixedEditModal").dataset.id);if(!f)return;if(!(await appConfirm(`${monthLabel(selectedMonth)}以降の固定費設定を削除します。\\n過去に確定した実支出は削除されません。`,{title:"固定費を削除",confirmText:"この月以降を削除",danger:true})))return;f.endMonth=selectedMonth;f.changes=(f.changes||[]).filter(c=>compareMonth(c.effectiveMonth,selectedMonth)<0);save();closeFixedEdit();renderAll();}\nasync function deleteFixedCompletely(){const f=getFixedSource($("fixedEditModal").dataset.id);if(!f)return;if(!(await appConfirm("この固定費を完全削除します。\\n\\nすべての固定費設定・変更履歴が削除されます。\\n確定済みの実支出は通常の支出として残ります。",{title:"固定費を完全削除",confirmText:"完全削除",danger:true})))return;state.expenses.forEach(e=>{if(e.origin?.type==="fixed"&&String(e.origin.sourceId)===String(f.id))e.origin=null;});state.fixedExpenses=state.fixedExpenses.filter(x=>String(x.id)!==String(f.id));save();closeFixedEdit();renderAll();}'''
+          s=replace_once(s,old,new,'fixed delete confirms')
+
+          # Convert all remaining browser-native confirmation calls to the app modal.
+          s=s.replace('confirm(', 'await appConfirm(')
+          for name in ['saveFixedEdit','saveIncome','clearIncome','clearBonus','saveSettings','handleBackupObject']:
+              old=f'function {name}('
+              new=f'async function {name}('
+              if old not in s: raise SystemExit(f'async target missing: {name}')
+              s=s.replace(old,new,1)
+
+          for name in ['addExpense','addPlanned','saveExpenseEdit','savePlannedEdit']:
+              old=f'function {name}('
+              new=f'async function {name}('
+              if old not in s: raise SystemExit(f'cross-month async target missing: {name}')
+              s=s.replace(old,new,1)
+          s=s.replace('if(!confirmCrossMonth(selectedMonth,dest,"支出"))return;','if(!(await confirmCrossMonth(selectedMonth,dest,"支出")))return;',1)
+          s=s.replace('if(!confirmCrossMonth(selectedMonth,dest,"予定支出"))return;','if(!(await confirmCrossMonth(selectedMonth,dest,"予定支出")))return;',1)
+          s=s.replace('if(!confirmCrossMonth(sourceMonth,dest,"支出"))return;','if(!(await confirmCrossMonth(sourceMonth,dest,"支出")))return;',1)
+          s=s.replace('if(!confirmCrossMonth(source,dest,"予定支出"))return;','if(!(await confirmCrossMonth(source,dest,"予定支出")))return;',1)
+
+          bind_old='''$("closeDeleteConfirm").onclick=closeDeleteConfirm;$("cancelDeleteConfirm").onclick=closeDeleteConfirm;$("confirmDeleteExpense").onclick=confirmDelete;$("deleteConfirmModal").addEventListener("click",e=>{if(e.target===$("deleteConfirmModal"))closeDeleteConfirm();});'''
+          bind_new=bind_old+'''\n  $("closeAppConfirm").onclick=()=>closeAppConfirm(false);$("cancelAppConfirm").onclick=()=>closeAppConfirm(false);$("acceptAppConfirm").onclick=()=>closeAppConfirm(true);$("appConfirmModal").addEventListener("click",e=>{if(e.target===$("appConfirmModal"))closeAppConfirm(false);});'''
+          s=replace_once(s,bind_old,bind_new,'confirm event bindings')
+
+          p.write_text(s,encoding='utf-8')
+
+          h=Path('index.html')
+          html=h.read_text(encoding='utf-8')
+          if html.count('48.11')<3: raise SystemExit('expected ver.48.11 references in index')
+          html=html.replace('48.11','48.12')
+          marker='''  <div id="migrationModal" class="modal hidden migration-modal"><div class="modal-box migration-box">'''
+          confirm_modal='''  <div id="appConfirmModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="appConfirmTitle"><div class="modal-box app-confirm-box">\n    <div class="modal-header"><h2 id="appConfirmTitle">確認</h2><button id="closeAppConfirm" class="close-btn" type="button">×</button></div>\n    <p id="appConfirmMessage" class="confirm-message"></p>\n    <div class="modal-actions confirm-modal-actions"><button id="cancelAppConfirm" type="button" class="secondary-btn">キャンセル</button><button id="acceptAppConfirm" type="button">実行する</button></div>\n  </div></div>\n\n'''
+          if marker not in html: raise SystemExit('migration modal marker not found')
+          html=html.replace(marker,confirm_modal+marker,1)
+          h.write_text(html,encoding='utf-8')
+
+          css=Path('style.css')
+          c=css.read_text(encoding='utf-8')
+          additions='''\n/* ver.48.12 UI polish */\n.table-actions button{border-radius:5px}\n.edit-footer-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-items:stretch}\n.edit-footer-actions button{width:100%;min-width:0}\n.confirm-modal-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}\n.confirm-modal-actions button{width:100%;min-width:0}\n.app-confirm-box{width:min(460px,100%)}\n.vertical-chart-layout{display:grid;grid-template-columns:62px minmax(0,1fr);gap:7px;width:100%;min-width:0;max-width:100%;align-items:start}\n.chart-y-axis{height:210px;display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;padding:0 2px 0 0;color:#747c86;font-size:10px;line-height:1;white-space:nowrap;font-variant-numeric:tabular-nums}\n.vertical-bars-area{position:relative;width:100%;height:210px;min-width:0;max-width:100%}\n.vertical-bars-area .vertical-bars{position:relative;z-index:1;height:210px;background:transparent}\n.chart-grid-lines{position:absolute;z-index:0;inset:0 4px 0 4px;display:flex;flex-direction:column;justify-content:space-between;pointer-events:none}\n.chart-grid-lines span{display:block;width:100%;border-top:1px solid #e1e5e9}\n@media(max-width:680px){.edit-footer-actions{gap:6px}.edit-footer-actions button{padding-left:6px;padding-right:6px;font-size:12px}.vertical-chart-layout{grid-template-columns:56px minmax(0,1fr);gap:5px}.chart-y-axis{font-size:9px}.confirm-modal-actions{gap:7px}}\n@media(prefers-color-scheme:dark){.chart-y-axis{color:#aab2bc}.chart-grid-lines span{border-color:#343b45}}\n'''
+          if '/* ver.48.12 UI polish */' in c: raise SystemExit('style patch already exists')
+          css.write_text(c+additions,encoding='utf-8')
+
+          Path('README.md').write_text('''# 家計簿アプリ\n\n## ver.48.12\n- 日毎・月別の支出グラフに金額の縦軸目盛りと補助線を追加し、最大値に応じて見やすい上限へ自動調整\n- 支出テーブルの「支出に確定」「編集」などの操作ボタンを、角丸を抑えた四角ベースの形へ調整\n- 支出・予定支出の編集画面で「削除・キャンセル・保存」を均等配置\n- 実行確認をブラウザ標準ダイアログからアプリ独自の確認モーダルへ統一\n''',encoding='utf-8')
+          PY
+
+      - name: Validate
+        shell: bash
+        run: |
+          node --check app.js
+          node --check sw.js
+          git diff --check
+          grep -q 'const VERSION="48.12"' app.js
+          grep -q 'ver.48.12' index.html
+          grep -q 'style.css?v=48.12' index.html
+          grep -q 'app.js?v=48.12' index.html
+          grep -q 'id="appConfirmModal"' index.html
+          grep -q 'function niceChartScale' app.js
+          grep -q 'class="vertical-chart-layout"' app.js
+          grep -q 'class="chart-y-axis"' app.js
+          grep -q 'async function confirmPlanned' app.js
+          grep -q 'async function confirmFixed' app.js
+          grep -q 'async function handleBackupObject' app.js
+          grep -q 'await appConfirm' app.js
+          grep -q '.edit-footer-actions{display:grid' style.css
+          grep -q '.table-actions button{border-radius:5px}' style.css
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('app.js').read_text(encoding='utf-8')
+          assert 'confirm(' not in s, 'native confirm() remains'
+          assert s.count('await confirmCrossMonth') == 4
+          assert 'async function switchMonth' in s
+          assert 'await confirmDiscardUnsaved()' in s
+          html=Path('index.html').read_text(encoding='utf-8')
+          for i in ['appConfirmModal','appConfirmTitle','appConfirmMessage','cancelAppConfirm','acceptAppConfirm']:
+              assert f'id="{i}"' in html
+          print('ver.48.12 static checks passed')
+          PY
+
+      - name: Commit clean final tree
+        shell: bash
+        run: |
+          rm -f .github/workflows/ver4812-ui-polish.yml
+          rmdir .github/workflows 2>/dev/null || true
+          rmdir .github 2>/dev/null || true
+          python3 - <<'PY'
+          from pathlib import Path
+          expected={'README.md','app.js','index.html','manifest.json','style.css','sw.js'}
+          actual={p.name for p in Path('.').iterdir() if p.name!='.git'}
+          if actual!=expected: raise SystemExit(f'final tree mismatch: {sorted(actual)}')
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Polish graphs and confirmation UI for ver.48.12'
+          git push origin develop
