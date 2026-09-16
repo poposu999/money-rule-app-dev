@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)"/>
 <meta name="theme-color" content="#111418" media="(prefers-color-scheme: dark)"/>
 <link rel="manifest" href="manifest.json"/>
-<link href="style.css?v=48.11" rel="stylesheet"/>
+<link href="style.css?v=48.12" rel="stylesheet"/>
 </head>
 <body>
 <div class="dev-environment-banner" role="status">検証環境</div>
@@ -200,6 +200,12 @@
     <div class="modal-actions"><button id="cancelDeleteConfirm" type="button" class="secondary-btn">キャンセル</button><button id="confirmDeleteExpense" type="button" class="danger-btn">削除する</button></div>
   </div></div>
 
+  <div id="appConfirmModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="appConfirmTitle"><div class="modal-box app-confirm-box">
+  <div class="modal-header"><h2 id="appConfirmTitle">確認</h2><button id="closeAppConfirm" class="close-btn" type="button">×</button></div>
+  <p id="appConfirmMessage" class="confirm-message"></p>
+  <div class="modal-actions confirm-modal-actions"><button id="cancelAppConfirm" type="button" class="secondary-btn">キャンセル</button><button id="acceptAppConfirm" type="button">実行する</button></div>
+</div></div>
+
   <div id="migrationModal" class="modal hidden migration-modal"><div class="modal-box migration-box">
     <div class="modal-header"><h2>Ver.49形式へのデータ移行</h2></div>
     <p>Ver.48系の検証データをVer.49形式へ移行します。移行前にバックアップを保存してください。</p>
@@ -209,9 +215,9 @@
   </div></div>
 
   <div id="memoPopup" class="memo-popup hidden" role="status"></div>
-  <footer class="app-footer"><h1>家計簿 <span class="app-version">ver.48.11</span></h1><p>Ver.49月別管理の検証版</p></footer>
+  <footer class="app-footer"><h1>家計簿 <span class="app-version">ver.48.12</span></h1><p>Ver.49月別管理の検証版</p></footer>
 </main>
-<script src="app.js?v=48.11"></script>
+<script src="app.js?v=48.12"></script>
 <script>
 if ("serviceWorker" in navigator) {
   let reloading = false;
