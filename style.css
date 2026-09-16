@@ -139,9 +139,14 @@ input[type="date"]::-webkit-datetime-edit-fields-wrapper{
 @media(max-width:680px){.edit-footer-actions{gap:6px}.edit-footer-actions button{padding-left:6px;padding-right:6px;font-size:12px}.vertical-chart-layout{grid-template-columns:56px minmax(0,1fr);gap:5px}.chart-y-axis{font-size:9px}.confirm-modal-actions{gap:7px}}
 @media(prefers-color-scheme:dark){.chart-y-axis{color:#aab2bc}.chart-grid-lines span{border-color:#343b45}}
 
-/* ver.48.15 daily chart edge fix */
-#dailyChart .vertical-bars{padding-right:24px}
-#dailyChart .bar-labels{padding-right:24px}
-#dailyChart .chart-grid-lines{right:24px}
-#dailyChart .bar-label:first-child{text-align:left}
-#dailyChart .bar-label:last-child{text-align:right}
+/* Daily bars, labels and grid share one inset plotting area. */
+#dailyChart .daily-chart-plot{padding:0 14px 0 6px;overflow:visible}
+#dailyChart .vertical-bars,#dailyChart .bar-labels{
+  display:grid;grid-template-columns:repeat(var(--daily-columns),minmax(0,1fr));
+  column-gap:1px;padding-left:0;padding-right:0;
+}
+#dailyChart .chart-grid-lines{left:0;right:0}
+#dailyChart .bar-label{position:relative}
+#dailyChart .bar-label>span{position:absolute;left:50%;transform:translateX(-50%);white-space:nowrap}
+#dailyChart .bar-label:first-child>span{left:0;transform:none}
+#dailyChart .bar-label:last-child>span{left:auto;right:0;transform:none}

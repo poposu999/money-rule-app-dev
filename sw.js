@@ -19,3 +19,4 @@ self.addEventListener("fetch",event=>{
   if(url.origin!==self.location.origin)return;
   event.respondWith(fetch(new Request(event.request,{cache:"no-store"})));
 });
+
