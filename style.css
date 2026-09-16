@@ -160,8 +160,11 @@ input[type="date"]::-webkit-datetime-edit-fields-wrapper{
 .fixed-delete-actions{margin-top:16px;padding-top:14px}
 .fixed-edit-actions{margin-top:10px}
 .fixed-delete-actions button,.fixed-edit-actions button{width:100%;min-width:0}
+.app-alert-box{width:min(460px,100%)}
+#appAlertModal{z-index:4500}
+.alert-modal-actions{display:grid;grid-template-columns:1fr}
+.alert-modal-actions button{width:100%}
 @media(max-width:680px){
   .fixed-delete-actions,.fixed-edit-actions{gap:7px}
   .fixed-delete-actions button,.fixed-edit-actions button{padding-left:5px;padding-right:5px;font-size:12px}
 }
-
