@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)"/>
 <meta name="theme-color" content="#111418" media="(prefers-color-scheme: dark)"/>
 <link rel="manifest" href="manifest.json"/>
-<link href="style.css?v=48.16" rel="stylesheet"/>
+<link href="style.css?v=48.17" rel="stylesheet"/>
 </head>
 <body>
 <div class="dev-environment-banner" role="status">検証環境</div>
@@ -169,8 +169,8 @@
     <label>メモ<input id="fixedEditMemo" type="text"></label>
     <label>毎月の支払日<select id="fixedEditDue"></select></label>
     <div class="modal-reorder"><span>同じ支払日内の並び順</span><div><button id="moveFixedEditUp" type="button" class="secondary-btn">▲ 上へ</button><button id="moveFixedEditDown" type="button" class="secondary-btn">▼ 下へ</button></div></div>
-    <div class="modal-actions split-actions"><button id="deleteFixedFromMonth" type="button" class="edit-modal-delete-btn">この月以降削除</button><button id="deleteFixedCompletely" type="button" class="danger-btn">完全削除</button></div>
-    <div class="modal-actions"><button id="cancelFixedEdit" class="secondary-btn" type="button">キャンセル</button><button id="saveFixedEdit" type="button">保存</button></div>
+    <div class="modal-actions split-actions fixed-delete-actions"><button id="deleteFixedFromMonth" type="button" class="edit-modal-delete-btn">この月以降削除</button><button id="deleteFixedCompletely" type="button" class="danger-btn">完全削除</button></div>
+    <div class="modal-actions fixed-edit-actions"><button id="cancelFixedEdit" class="secondary-btn" type="button">キャンセル</button><button id="saveFixedEdit" type="button">保存</button></div>
   </div></div>
 
   <div id="plannedEditModal" class="modal hidden"><div class="modal-box" data-dirty-area="planned-edit">
@@ -215,9 +215,9 @@
   </div></div>
 
   <div id="memoPopup" class="memo-popup hidden" role="status"></div>
-  <footer class="app-footer"><h1>家計簿 <span class="app-version">ver.48.16</span></h1><p>Ver.49月別管理の検証版</p></footer>
+  <footer class="app-footer"><h1>家計簿 <span class="app-version">ver.48.17</span></h1><p>Ver.49月別管理の検証版</p></footer>
 </main>
-<script src="app.js?v=48.16"></script>
+<script src="app.js?v=48.17"></script>
 <script>
 if ("serviceWorker" in navigator) {
   let reloading = false;
@@ -236,4 +236,5 @@ if ("serviceWorker" in navigator) {
 </script>
 </body>
 </html>
+
 

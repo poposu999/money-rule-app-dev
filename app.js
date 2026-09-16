@@ -1,4 +1,4 @@
-const VERSION="48.16";
+const VERSION="48.17";
 const SCHEMA_VERSION=49;
 const PROD_STORAGE_KEYS={state:"moneyRuleAppV2",sections:"moneyRuleSectionPrefs",stats:"moneyRuleStatPrefs"};
 const LEGACY_STORAGE_KEYS={state:"moneyRuleDevAppV2",sections:"moneyRuleDevSectionPrefs",stats:"moneyRuleDevStatPrefs"};
@@ -586,4 +586,5 @@ function bootstrap(){
   setMigrationStateStatus("旧ver.48.02検証データが見つからないため、新規Ver.49検証データとして開始しています。");
 }
 bootstrap();
+
 

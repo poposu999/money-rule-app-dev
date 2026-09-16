@@ -150,3 +150,22 @@ input[type="date"]::-webkit-datetime-edit-fields-wrapper{
 #dailyChart .bar-label>span{position:absolute;left:50%;transform:translateX(-50%);white-space:nowrap}
 #dailyChart .bar-label:first-child>span{left:0;transform:none}
 #dailyChart .bar-label:last-child>span{left:auto;right:0;transform:none}
+/* Fixed-expense editor actions */
+.fixed-delete-actions,.fixed-edit-actions{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+  align-items:stretch;
+}
+.fixed-delete-actions{margin-top:16px;padding-top:14px}
+.fixed-edit-actions{margin-top:10px}
+.fixed-delete-actions button,.fixed-edit-actions button{width:100%;min-width:0}
+#deleteFixedCompletely{background:#9b2f2f;color:#fff;border:1px solid #9b2f2f}
+@media(max-width:680px){
+  .fixed-delete-actions,.fixed-edit-actions{gap:7px}
+  .fixed-delete-actions button,.fixed-edit-actions button{padding-left:5px;padding-right:5px;font-size:12px}
+}
+@media(prefers-color-scheme:dark){
+  #deleteFixedCompletely{background:#a4474e;color:#fff;border-color:#a4474e}
+}
+
