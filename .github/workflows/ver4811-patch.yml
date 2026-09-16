@@ -1,0 +1,138 @@
+name: Ver.48.11 migration safety patch
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - '.github/workflows/ver4811-patch.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.head_commit.message != 'Fix ver.48.11 migration safety'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+
+      - name: Apply ver.48.11 patch
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          p=Path('app.js')
+          s=p.read_text(encoding='utf-8')
+          if 'const VERSION="48.10";' not in s:
+              raise SystemExit('expected ver.48.10 source')
+          s=s.replace('const VERSION="48.10";','const VERSION="48.11";',1)
+
+          old='''function readJson(key,fallback=null){\n  try{const raw=localStorage.getItem(key);return raw===null?fallback:JSON.parse(raw);}catch{return fallback;}\n}\n'''
+          new='''function readJson(key,fallback=null){\n  try{const raw=localStorage.getItem(key);return raw===null?fallback:JSON.parse(raw);}catch{return fallback;}\n}\nfunction readJsonStatus(key){\n  const raw=localStorage.getItem(key);\n  if(raw===null)return {exists:false,value:null,error:null};\n  try{return {exists:true,value:JSON.parse(raw),error:null};}\n  catch(error){return {exists:true,value:null,error};}\n}\n'''
+          if old not in s: raise SystemExit('readJson block not found')
+          s=s.replace(old,new,1)
+
+          if 'fixedMap=new Map()' not in s:
+              raise SystemExit('fixedMap declaration not found')
+          s=s.replace('fixedMap=new Map()','fixedLegacyMap=new Map()',1)
+
+          old='if(f.id!==undefined&&!fixedMap.has(String(f.id)))fixedMap.set(String(f.id),id);'
+          new='if(f.id!==undefined){const legacyKey=String(f.id),matches=fixedLegacyMap.get(legacyKey)||[];matches.push(id);fixedLegacyMap.set(legacyKey,matches);}'
+          if old not in s: raise SystemExit('fixedMap registration not found')
+          s=s.replace(old,new,1)
+
+          pattern=r'if\(e\.fixedId!==undefined&&fixedMap\.has\(String\(e\.fixedId\)\)\)\{.*?\}else if\(e\.plannedSourceId!==undefined\)\{'
+          replacement='''const fixedLegacyKey=e.fixedId!==undefined?String(e.fixedId):null,fixedMatches=fixedLegacyKey===null?[]:(fixedLegacyMap.get(fixedLegacyKey)||[]);if(fixedMatches.length===1){const fid=fixedMatches[0],sourceMonth=validMonthKey(String(e.fixedMonth||""))?String(e.fixedMonth):monthOfDate(item.date),snapshot={amount:item.amount,category:item.category,memo:item.memo,date:item.date};const f=out.fixedExpenses.find(x=>x.id===fid);if(f&&sourceMonth===now){item.origin={type:"fixed",sourceId:fid,sourceMonth,snapshot,legacy:true};f.paidMonths[now]={expenseId:id,confirmedAt:"migration"};}else{item.legacyOrigin={type:"fixed",sourceId:fid,sourceMonth,snapshot,actionable:false};}}else if(fixedMatches.length>1){const sourceMonth=validMonthKey(String(e.fixedMonth||""))?String(e.fixedMonth):monthOfDate(item.date);item.legacyOrigin={type:"fixed",legacySourceId:fixedLegacyKey,sourceMonth,actionable:false};}else if(e.plannedSourceId!==undefined){'''
+          s,n=re.subn(pattern,replacement,s,count=1,flags=re.S)
+          if n!=1: raise SystemExit(f'fixed expense linkage replacement count={n}')
+
+          pattern=r'function exportLegacyBackupForMigration\(\)\{.*?\}\nfunction renderMigrationErrors'
+          replacement='''function exportLegacyBackupForMigration(){\n  const data={format:"money-rule-dev-backup",version:"48.02",schemaVersion:48,environment:"development",exportedAt:new Date().toISOString(),localStorage:{}};\n  [LEGACY_STORAGE_KEYS.state,LEGACY_STORAGE_KEYS.sections,LEGACY_STORAGE_KEYS.stats].forEach(k=>{const v=localStorage.getItem(k);if(v!==null)data.localStorage[k]=v;});\n  downloadJson(data,`money-rule-pre-v49-${getToday().replaceAll('-', '')}.json`);\n  migrationBackupReady=true;\n  const legacyStatus=readJsonStatus(LEGACY_STORAGE_KEYS.state),canMigrate=legacyStatus.exists&&!legacyStatus.error;\n  $("startMigration").disabled=!canMigrate;\n  setText("migrationStatus",canMigrate?"バックアップを書き出しました。移行を開始できます。":"バックアップを書き出しました。旧データのJSONが破損しているため、新規データは作成せず停止しています。データを修正して再読み込みしてください。");\n}\nfunction renderMigrationErrors'''
+          s,n=re.subn(pattern,replacement,s,count=1,flags=re.S)
+          if n!=1: raise SystemExit(f'export migration backup replacement count={n}')
+
+          pattern=r'function startMigration\(\)\{.*?\}\n\n\nfunction setMigrationStateStatus'
+          replacement='''function startMigration(){\n  if(!migrationBackupReady)return alert("先にバックアップを保存してください。");\n  const legacyStatus=readJsonStatus(LEGACY_STORAGE_KEYS.state);\n  if(legacyStatus.error){$("startMigration").disabled=true;setText("migrationStatus","移行を中止しました。旧データのJSONを読み込めません。バックアップを保持したままデータを修正し、再読み込みしてください。");return;}\n  const legacy=legacyStatus.value,check=validateLegacyState(legacy);\n  if(check.errors.length){setText("migrationStatus",`移行を中止しました。${check.errors.length}件の問題があります。旧データは変更していません。`);renderMigrationErrors(check.errors,legacy);return;}\n  const converted=convertLegacyState(legacy);\n  const issues=collectIntegrityIssues(converted).filter(x=>x.includes("不正な日付")||x.includes("重複ID"));\n  if(issues.length){setText("migrationStatus","移行後データの検証に失敗しました。旧データは変更していません。");return;}\n  localStorage.setItem(STORAGE_KEYS.state,JSON.stringify(converted));\n  const verify=normalizeCurrentState(readJson(STORAGE_KEYS.state,null));\n  if(!verify){localStorage.removeItem(STORAGE_KEYS.state);setText("migrationStatus","保存後の検証に失敗しました。旧データは変更していません。");return;}\n  localStorage.removeItem(LEGACY_STORAGE_KEYS.state);\n  localStorage.setItem(STORAGE_KEYS.migrated,"complete");\n  sessionStorage.setItem("moneyRuleDevV49MigrationCompleted","1");\n  setText("migrationStatus","Ver.49へのデータ移行が完了しました。");\n  setTimeout(()=>location.reload(),700);\n}\n\nfunction setMigrationStateStatus'''
+          s,n=re.subn(pattern,replacement,s,count=1,flags=re.S)
+          if n!=1: raise SystemExit(f'startMigration replacement count={n}')
+
+          marker='''function showLegacyMigrationGate(legacyRaw,normalized){'''
+          gate='''function showBrokenLegacyMigrationGate(){\n  $("migrationModal").classList.remove("hidden");\n  migrationBackupReady=false;\n  $("startMigration").disabled=true;\n  setText("migrationStatus","旧ver.48.02検証データを読み込めません。新規Ver.49データは作成せず停止しています。先にバックアップを保存し、旧データを修正して再読み込みしてください。");\n  setMigrationStateStatus("移行停止：旧ver.48.02検証データのJSONが破損しています");\n  return true;\n}\n\n'''
+          if marker not in s: raise SystemExit('showLegacyMigrationGate not found')
+          s=s.replace(marker,gate+marker,1)
+
+          old='const legacyRaw=readJson(LEGACY_STORAGE_KEYS.state,null);'
+          new='const legacyStatus=readJsonStatus(LEGACY_STORAGE_KEYS.state),legacyRaw=legacyStatus.value;'
+          if old not in s: raise SystemExit('bootstrap legacy read not found')
+          s=s.replace(old,new,1)
+
+          old='const migrationMarker=localStorage.getItem(STORAGE_KEYS.migrated);'
+          new='const migrationMarker=localStorage.getItem(STORAGE_KEYS.migrated);\n  if(legacyStatus.exists&&legacyStatus.error&&migrationMarker!=="complete"){showBrokenLegacyMigrationGate();return;}'
+          if old not in s: raise SystemExit('migration marker line not found')
+          s=s.replace(old,new,1)
+
+          p.write_text(s,encoding='utf-8')
+
+          h=Path('index.html')
+          html=h.read_text(encoding='utf-8')
+          if html.count('48.10')<3: raise SystemExit('expected index version references')
+          html=html.replace('48.10','48.11')
+          h.write_text(html,encoding='utf-8')
+
+          Path('README.md').write_text('''# 家計簿アプリ\n\n## ver.48.11\n- Ver.48→Ver.49移行で固定費IDが重複している場合、由来を推測せず固定費本体を保持したまま未確定リンクとして扱うよう修正\n- 旧Ver.48データのJSON破損を起動時に検知し、新規Ver.49データを自動作成せず移行を停止するよう修正\n- 旧データが破損している場合でも移行前バックアップを書き出せるようにし、旧データを変更せず修正・再試行できるよう改善\n''',encoding='utf-8')
+          PY
+
+      - name: Validate patch
+        shell: bash
+        run: |
+          node --check app.js
+          node --check sw.js
+          git diff --check
+          grep -q 'const VERSION="48.11"' app.js
+          grep -q 'fixedLegacyMap=new Map()' app.js
+          grep -q 'fixedMatches.length===1' app.js
+          grep -q 'fixedMatches.length>1' app.js
+          grep -q 'legacySourceId:fixedLegacyKey' app.js
+          grep -q 'function readJsonStatus' app.js
+          grep -q 'function showBrokenLegacyMigrationGate' app.js
+          grep -q 'legacyStatus.exists&&legacyStatus.error&&migrationMarker!=="complete"' app.js
+          grep -q 'ver.48.11' index.html
+          grep -q 'style.css?v=48.11' index.html
+          grep -q 'app.js?v=48.11' index.html
+          ! grep -q 'ver.48.10' README.md
+          ! grep -q 'fixedMap=new Map()' app.js
+          ! grep -q 'fixedMap.has' app.js
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('app.js').read_text(encoding='utf-8')
+          assert s.count('fixedMatches.length===1') == 1
+          assert s.count('fixedMatches.length>1') == 1
+          assert '$("startMigration").disabled=!canMigrate' in s
+          assert 'localStorage.removeItem(LEGACY_STORAGE_KEYS.state)' in s
+          assert 'const legacyStatus=readJsonStatus(LEGACY_STORAGE_KEYS.state),legacyRaw=legacyStatus.value;' in s
+          print('static migration safety checks passed')
+          PY
+
+      - name: Clean temporary workflow and commit
+        shell: bash
+        run: |
+          rm -f .github/workflows/ver4811-patch.yml
+          rmdir .github/workflows 2>/dev/null || true
+          rmdir .github 2>/dev/null || true
+          python3 - <<'PY'
+          from pathlib import Path
+          expected={'README.md','app.js','index.html','manifest.json','style.css','sw.js'}
+          actual={p.name for p in Path('.').iterdir() if p.name != '.git'}
+          if actual != expected:
+              raise SystemExit(f'final tree mismatch: {sorted(actual)}')
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Fix ver.48.11 migration safety'
+          git push origin develop
