@@ -1,0 +1,295 @@
+name: Ver.48.12 UI refinements
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - '.github/workflows/ver4812-ui.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.head_commit.message != 'Refine ver.48.12 graphs and confirmations'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+
+      - name: Apply ver.48.12 refinements
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          def sub_once(text, pattern, replacement, label):
+              out, n = re.subn(pattern, replacement, text, count=1, flags=re.S)
+              if n != 1:
+                  raise SystemExit(f'{label}: replacement count={n}')
+              return out
+
+          p = Path('app.js')
+          s = p.read_text(encoding='utf-8')
+          if 'const VERSION="48.11";' not in s:
+              raise SystemExit('expected ver.48.11 source')
+          s = s.replace('const VERSION="48.11";', 'const VERSION="48.12";', 1)
+
+          old = 'function confirmDiscardUnsaved(){return !hasUnsavedChanges()||confirm("保存されていない変更があります。入力内容を破棄して月を移動しますか？");}'
+          new = '''let appConfirmResolver=null;
+          function appConfirm(message,{title="確認",confirmLabel="実行",cancelLabel="キャンセル",danger=false}={}){
+            return new Promise(resolve=>{
+              if(appConfirmResolver){const previous=appConfirmResolver;appConfirmResolver=null;previous(false);}
+              appConfirmResolver=resolve;
+              setText("actionConfirmTitle",title);
+              $("actionConfirmMessage").textContent=String(message||"");
+              $("confirmAction").textContent=confirmLabel;
+              $("cancelActionConfirm").textContent=cancelLabel;
+              $("confirmAction").classList.toggle("danger-btn",Boolean(danger));
+              $("actionConfirmModal").classList.remove("hidden");
+            });
+          }
+          function closeActionConfirm(result=false){
+            const resolve=appConfirmResolver;appConfirmResolver=null;
+            $("actionConfirmModal").classList.add("hidden");
+            if(resolve)resolve(Boolean(result));
+          }'''.replace('\n          ','\n').strip()
+          if old not in s:
+              raise SystemExit('confirmDiscardUnsaved source not found')
+          s = s.replace(old, new, 1)
+
+          s = sub_once(s,
+              r'function confirmCrossMonth\(source,dest,kind="項目"\)\{.*?\n\}',
+              '''async function confirmCrossMonth(source,dest,kind="項目"){
+            if(source===dest)return true;
+            return appConfirm(`${kind}の日付を別の月へ変更します。\n\n${monthLabel(source)} → ${monthLabel(dest)}\n\n${monthLabel(dest)}のデータとして保存します。`,{title:"月をまたぐ変更",confirmLabel:"変更する"});
+          }'''.replace('\n          ','\n').strip(),
+              'confirmCrossMonth')
+
+          s = sub_once(s,
+              r'function switchMonth\(next,\{force=false\}=\{\}\)\{.*?\n\}',
+              '''async function switchMonth(next,{force=false}={}){
+            if(!monthWithinAllowedRange(next))return;
+            if(!force&&hasUnsavedChanges()&&!await appConfirm("保存されていない変更があります。入力内容を破棄して月を移動しますか？",{title:"未保存の変更",confirmLabel:"破棄して移動"}))return;
+            selectedMonth=next;ensureMonthRecord(selectedMonth);closeAllEditModals();resetEntryTab();updateDynamicTitles();loadMonthForms();renderAll();window.scrollTo({top:0,behavior:"auto"});
+          }'''.replace('\n          ','\n').strip(),
+              'switchMonth')
+
+          graph_replacement = r'''function niceChartAxis(maxValue){
+  const value=Math.max(1,Number(maxValue)||0),rough=value/4,power=Math.pow(10,Math.floor(Math.log10(rough))),normalized=rough/power,step=(normalized<=1?1:normalized<=2?2:normalized<=5?5:10)*power,max=step*4;
+  return {max,step,ticks:[max,max-step,max-step*2,max-step*3,0]};
+}
+function chartAxisYen(value){const n=Math.round(Number(value)||0);return Math.abs(n)>=1000000&&n%10000===0?`¥${(n/10000).toLocaleString("ja-JP")}万`:yen(n);}
+function chartYAxisHtml(axis){return `<div class="chart-y-axis">${axis.ticks.map(v=>`<span>${chartAxisYen(v)}</span>`).join("")}</div>`;}
+function renderDailyChart(){
+  const data=sourceDataForMonth(selectedMonth),tot=sourceTotals(data),days=daysInMonth(selectedMonth),vals=Array.from({length:days},()=>({actual:0,planned:0,fixed:0}));const add=(arr,type)=>arr.forEach(e=>{const d=Number(String(e.date||"").slice(8,10));if(d>=1&&d<=days)vals[d-1][type]+=Number(e.amount||0);});add(data.actual,"actual");add(data.planned,"planned");add(data.fixed,"fixed");const totals=vals.map(v=>v.actual+v.planned+v.fixed),max=Math.max(0,...totals),container=$("dailyChart");if(!max){container.innerHTML='<div class="chart-empty">表示できる支出データがありません</div>';return;}const axis=niceChartAxis(max),labelDays=new Set([1,5,10,15,20,25,days]);container.innerHTML=legendHtml(tot)+`<div class="chart-plot-layout">${chartYAxisHtml(axis)}<div class="vertical-chart"><div class="vertical-bars">${vals.map((v,i)=>{const total=totals[i],h=total/axis.max*100;return `<div class="bar-column" data-day="${i+1}"><div class="bar-stack" style="height:${h}%"><span class="bar-segment stack-actual" style="height:${total?v.actual/total*100:0}%"></span><span class="bar-segment stack-planned" style="height:${total?v.planned/total*100:0}%"></span><span class="bar-segment stack-fixed" style="height:${total?v.fixed/total*100:0}%"></span></div></div>`}).join("")}</div><div class="bar-labels">${vals.map((_,i)=>`<span class="bar-label">${labelDays.has(i+1)?i+1:''}</span>`).join("")}</div></div></div>`;container.querySelectorAll("[data-day]").forEach(el=>el.addEventListener("click",ev=>{const d=Number(el.dataset.day);popupBreakdown(`${monthLabel(selectedMonth)}${d}日`,vals[d-1],ev);}));
+}
+function renderMonthlyChart(){
+  const keys=[];for(let i=5;i>=0;i--)keys.push(addMonths(selectedMonth,-i));const rows=keys.map(k=>{const v=sourceTotals(sourceDataForMonth(k));return {key:k,...v,total:v.actual+v.planned+v.fixed};}),max=Math.max(0,...rows.map(r=>r.total)),container=$("monthlyChart"),sum={actual:rows.reduce((s,r)=>s+r.actual,0),planned:rows.reduce((s,r)=>s+r.planned,0),fixed:rows.reduce((s,r)=>s+r.fixed,0)};if(!max){const msg=isFutureSelected()&&!monthExpenses(selectedMonth).length&&!monthPendingPlanned(selectedMonth).length&&!unpaidFixedEntries(selectedMonth).length?"予定されている支出はありません":"表示できる支出データがありません";container.innerHTML=`<div class="chart-empty">${msg}</div>`;return;}const axis=niceChartAxis(max);container.innerHTML=legendHtml(sum)+`<div class="chart-plot-layout">${chartYAxisHtml(axis)}<div class="vertical-chart"><div class="vertical-bars">${rows.map(r=>{const h=r.total/axis.max*100;return `<div class="bar-column" data-month-bar="${r.key}"><div class="bar-stack" style="height:${h}%"><span class="bar-segment stack-actual" style="height:${r.total?r.actual/r.total*100:0}%"></span><span class="bar-segment stack-planned" style="height:${r.total?r.planned/r.total*100:0}%"></span><span class="bar-segment stack-fixed" style="height:${r.total?r.fixed/r.total*100:0}%"></span></div></div>`}).join("")}</div><div class="bar-labels">${rows.map(r=>`<span class="bar-label">${shortMonthLabel(r.key)}</span>`).join("")}</div></div></div>`;container.querySelectorAll("[data-month-bar]").forEach(el=>el.addEventListener("click",ev=>{const r=rows.find(x=>x.key===el.dataset.monthBar);popupBreakdown(monthLabel(r.key),r,ev);}));
+}
+
+function nextOrderForDate'''
+          s = sub_once(s,
+              r'function renderDailyChart\(\)\{.*?\n\}\nfunction renderMonthlyChart\(\)\{.*?\n\}\n\nfunction nextOrderForDate',
+              graph_replacement,
+              'graph functions')
+
+          operations = r'''async function addExpense(){
+  const amount=validateAmount($("expenseAmount").value),date=$("expenseDate").value,category=$("expenseCategory").value,memo=$("expenseMemo").value.trim();if(!amount){alert("金額を入力してください。");return;}if(!isValidDateString(date)||!dateAllowed(date)){alert("登録できる日付を確認してください。未来は現在月から1年先までです。");return;}const dest=monthOfDate(date);if(!await confirmCrossMonth(selectedMonth,dest,"支出"))return;const e={id:newId("e"),amount,category:category||"その他",memo,date,order:nextOrderForDate(state.expenses,date),origin:null};state.expenses.push(e);state.memory.expenseCategory=category||"食費";rememberSessionDate("expense",date);save();clearDirty("expense-entry");if(dest!==selectedMonth){await switchMonth(dest,{force:true});return;}$("expenseAmount").value="";$("expenseMemo").value="";$("expenseDate").value=sessionDefaultDate("expense",selectedMonth);renderAll();
+}
+async function addPlanned(){
+  const amount=validateAmount($("plannedAmount").value),date=$("plannedDate").value,category=$("plannedCategory").value,memo=$("plannedMemo").value.trim();if(!amount){alert("金額を入力してください。");return;}if(!isValidDateString(date)||!dateAllowed(date)){alert("登録できる予定日を確認してください。未来は現在月から1年先までです。");return;}const dest=monthOfDate(date);if(!await confirmCrossMonth(selectedMonth,dest,"予定支出"))return;const p={id:newId("p"),amount,category:category||"その他",memo,date,order:nextOrderForDate(state.plannedExpenses,date),status:"pending",confirmedExpenseId:null};state.plannedExpenses.push(p);state.memory.plannedCategory=category||"食費";rememberSessionDate("planned",date);save();clearDirty("planned-entry");if(dest!==selectedMonth){await switchMonth(dest,{force:true});return;}$("plannedAmount").value="";$("plannedMemo").value="";$("plannedDate").value=sessionDefaultDate("planned",selectedMonth);renderAll();
+}
+function addFixed(){
+  const amount=validateAmount($("fixedAmount").value),category=$("fixedCategory").value,memo=$("fixedMemo").value.trim(),due=valueToDue($("fixedDue").value);if(!amount){alert("金額を入力してください。");return;}if(!category){alert("カテゴリを選択してください。");return;}if(!due){alert("支払日を選択してください。");return;}state.fixedExpenses.push({id:newId("f"),startMonth:selectedMonth,endMonth:null,changes:[{effectiveMonth:selectedMonth,amount,category,memo,due}],paidMonths:{},needsReview:false,order:Date.now()});state.memory.fixedCategory=category;save();clearDirty("fixed-entry");$("fixedAmount").value="";$("fixedMemo").value="";$("fixedDue").value="";renderAll();
+}
+
+async function confirmPlanned(id){
+  const p=getPlannedSource(id);if(!p||p.status==="confirmed")return;const message=["予定支出を支出に確定しますか？",`日付：${formatExpenseDate(p.date)}`,`カテゴリ：${p.category||"未設定"}`,`メモ：${String(p.memo||"").trim()||"なし"}`,`金額：${yen(p.amount)}`].join("\n");if(!await appConfirm(message,{title:"支出に確定",confirmLabel:"支出に確定"}))return;const e={id:newId("e"),amount:p.amount,category:p.category,memo:p.memo||"",date:p.date,order:nextOrderForDate(state.expenses,p.date),origin:{type:"planned",sourceId:p.id,sourceMonth:monthOfDate(p.date),snapshot:{amount:p.amount,category:p.category,memo:p.memo||"",date:p.date}}};state.expenses.push(e);p.status="confirmed";p.confirmedExpenseId=e.id;save();renderAll();
+}
+async function confirmFixed(id){
+  const f=getFixedSource(id),config=configForFixedMonth(f,selectedMonth);if(!f||!config||fixedIsPaid(f,selectedMonth)||!config.due)return;const date=fixedDueDate(f,selectedMonth,config),message=["固定費を支出に確定しますか？",`日付：${formatExpenseDate(date)}`,`カテゴリ：${config.category||"未設定"}`,`メモ：${String(config.memo||"").trim()||"なし"}`,`金額：${yen(config.amount)}`].join("\n");if(!await appConfirm(message,{title:"支出に確定",confirmLabel:"支出に確定"}))return;const e={id:newId("e"),amount:config.amount,category:config.category||"未設定",memo:config.memo||"",date,order:nextOrderForDate(state.expenses,date),origin:{type:"fixed",sourceId:f.id,sourceMonth:selectedMonth,snapshot:{amount:config.amount,category:config.category||"未設定",memo:config.memo||"",date}}};state.expenses.push(e);f.paidMonths[selectedMonth]={expenseId:e.id,confirmedAt:new Date().toISOString()};save();renderAll();
+}
+function expenseChangedFromSnapshot(e){const s=e?.origin?.snapshot;if(!s)return false;return Number(s.amount)!==Number(e.amount)||String(s.category||"")!==String(e.category||"")||String(s.memo||"")!==String(e.memo||"")||String(s.date||"")!==String(e.date||"");}
+async function unpayFixed(id,month=selectedMonth){
+  const f=getFixedSource(id),info=fixedPaidInfo(f,month);if(!f||!info)return false;const e=state.expenses.find(x=>String(x.id)===String(info.expenseId)),edited=e&&expenseChangedFromSnapshot(e),message=edited?"手動編集した支出も削除されます。\n実支出を削除して未払いへ戻しますか？":"実支出を削除して未払いへ戻します。";if(!await appConfirm(message,{title:"未払いに戻す",confirmLabel:"未払いに戻す",danger:true}))return false;if(e)state.expenses=state.expenses.filter(x=>String(x.id)!==String(e.id));delete f.paidMonths[month];save();renderAll();return true;
+}
+async function rollbackPlannedExpense(e){
+  const p=getPlannedSource(e.origin?.sourceId);if(!p)return alert("元の予定支出が見つかりません。");if(!await appConfirm("実支出を削除して予定支出へ戻します。",{title:"予定支出に戻す",confirmLabel:"予定支出に戻す"}))return;p.amount=e.amount;p.category=e.category;p.memo=e.memo||"";p.date=e.date;p.order=nextOrderForDate(state.plannedExpenses,p.date);p.status="pending";p.confirmedExpenseId=null;state.expenses=state.expenses.filter(x=>String(x.id)!==String(e.id));rememberSessionDate("planned",p.date);save();closeEdit();const dest=monthOfDate(p.date);if(dest!==selectedMonth){await switchMonth(dest,{force:true});return;}renderAll();
+}
+async function rollbackFixedExpense(e){
+  const month=e.origin?.sourceMonth,f=getFixedSource(e.origin?.sourceId);if(!f||!month)return alert("元の固定費が見つかりません。");const changed=await unpayFixed(f.id,month);if(!changed)return;closeEdit();if(month!==selectedMonth)await switchMonth(month,{force:true});
+}
+
+function openEdit'''
+          s = sub_once(s,
+              r'function addExpense\(\)\{.*?\nfunction openEdit',
+              operations,
+              'main operation confirmations')
+
+          s = sub_once(s,
+              r'function saveExpenseEdit\(\)\{.*?\}\nfunction requestExpenseDelete',
+              '''async function saveExpenseEdit(){const e=state.expenses.find(x=>String(x.id)===String($("editModal").dataset.id));if(!e)return;const amount=validateAmount($("editAmount").value),date=$("editDate").value;if(!amount)return alert("金額を入力してください。");if(!isValidDateString(date)||!dateAllowed(date))return alert("日付を確認してください。");const sourceMonth=monthOfDate(e.date),dest=monthOfDate(date);if(!await confirmCrossMonth(sourceMonth,dest,"支出"))return;e.amount=amount;e.category=$("editCategory").value;e.memo=$("editMemo").value.trim();if(e.date!==date)e.order=nextOrderForDate(state.expenses,date);e.date=date;rememberSessionDate("expense",date);save();closeEdit();if(dest!==selectedMonth){await switchMonth(dest,{force:true});return;}renderAll();}
+          function requestExpenseDelete'''.replace('\n          ','\n').strip(),
+              'saveExpenseEdit')
+
+          s = sub_once(s,
+              r'function savePlannedEdit\(\)\{.*?\}\nfunction requestPlannedDelete',
+              '''async function savePlannedEdit(){const p=getPlannedSource($("plannedEditModal").dataset.id);if(!p)return;const amount=validateAmount($("plannedEditAmount").value),date=$("plannedEditDate").value;if(!amount)return alert("金額を入力してください。");if(!isValidDateString(date)||!dateAllowed(date))return alert("予定日を確認してください。");const source=monthOfDate(p.date),dest=monthOfDate(date);if(!await confirmCrossMonth(source,dest,"予定支出"))return;p.amount=amount;p.category=$("plannedEditCategory").value;p.memo=$("plannedEditMemo").value.trim();if(p.date!==date)p.order=nextOrderForDate(state.plannedExpenses,date);p.date=date;rememberSessionDate("planned",date);save();closePlannedEdit();if(dest!==selectedMonth){await switchMonth(dest,{force:true});return;}renderAll();}
+          function requestPlannedDelete'''.replace('\n          ','\n').strip(),
+              'savePlannedEdit')
+
+          fixed_block = r'''async function saveFixedEdit(){
+  const f=getFixedSource($("fixedEditModal").dataset.id),old=configForFixedMonth(f,selectedMonth);if(!f||!old)return;const amount=validateAmount($("fixedEditAmount").value),category=$("fixedEditCategory").value,memo=$("fixedEditMemo").value.trim(),due=valueToDue($("fixedEditDue").value);if(!amount)return alert("金額を入力してください。");if(!category)return alert("カテゴリを選択してください。");if(!due)return alert("支払日を選択してください。");let effective=selectedMonth;const dueChanged=JSON.stringify(due)!==JSON.stringify(old.due);if(isPastSelected()&&dueChanged){if(await appConfirm(`支払日の変更を${monthLabel(selectedMonth)}から反映しますか？`,{title:"固定費の反映月",confirmLabel:"選択月から"})){effective=selectedMonth;}else if(await appConfirm("今月から反映しますか？",{title:"固定費の反映月",confirmLabel:"今月から"})){effective=currentMonthKey();}else return;}
+  const later=f.changes.some(c=>compareMonth(c.effectiveMonth,effective)>0);if(later&&!await appConfirm("この固定費には将来の変更予定があります。\n将来の予定を残したまま、この変更を追加しますか？",{title:"将来の変更予定",confirmLabel:"変更を追加"}))return;
+  upsertFixedChange(f,effective,{amount,category,memo,due});f.needsReview=false;
+  const paid=fixedPaidInfo(f,selectedMonth);if(paid&&effective===selectedMonth){const e=state.expenses.find(x=>String(x.id)===String(paid.expenseId));if(e&&await appConfirm("この月は支払済みです。\n選択月の確定済み支出にも変更を反映しますか？",{title:"確定済み支出への反映",confirmLabel:"実支出にも反映"})){e.amount=amount;e.category=category;e.memo=memo;e.date=fixedDueDate(f,selectedMonth,{amount,category,memo,due});e.origin=e.origin||{type:"fixed",sourceId:f.id,sourceMonth:selectedMonth};e.origin.snapshot={amount:e.amount,category:e.category,memo:e.memo,date:e.date};}}
+  save();closeFixedEdit();renderAll();
+}
+async function deleteFixedFromMonth(){const f=getFixedSource($("fixedEditModal").dataset.id);if(!f)return;if(!await appConfirm(`${monthLabel(selectedMonth)}以降の固定費設定を削除します。\n過去に確定した実支出は削除されません。`,{title:"固定費を削除",confirmLabel:"この月以降削除",danger:true}))return;f.endMonth=selectedMonth;f.changes=(f.changes||[]).filter(c=>compareMonth(c.effectiveMonth,selectedMonth)<0);save();closeFixedEdit();renderAll();}
+async function deleteFixedCompletely(){const f=getFixedSource($("fixedEditModal").dataset.id);if(!f)return;if(!await appConfirm("この固定費を完全削除します。\n\nすべての固定費設定・変更履歴が削除されます。\n確定済みの実支出は通常の支出として残ります。",{title:"固定費を完全削除",confirmLabel:"完全削除",danger:true}))return;state.expenses.forEach(e=>{if(e.origin?.type==="fixed"&&String(e.origin.sourceId)===String(f.id))e.origin=null;});state.fixedExpenses=state.fixedExpenses.filter(x=>String(x.id)!==String(f.id));save();closeFixedEdit();renderAll();}
+
+function moveWithinSameDate'''
+          s = sub_once(s,
+              r'function saveFixedEdit\(\)\{.*?\nfunction moveWithinSameDate',
+              fixed_block,
+              'fixed edit confirmations')
+
+          settings_block = r'''async function saveIncome(){const rec=selectedRecord();if(isPastSelected()&&!await appConfirm("過去月の予算結果が変わります。\n収入・ボーナスを保存しますか？",{title:"過去月の収入を保存",confirmLabel:"保存する"}))return;const incomeRaw=$("income").value,bonusRaw=$("bonus").value;if(incomeRaw!==""){const v=Number(incomeRaw);if(!Number.isFinite(v)||v<0)return alert("前月の収入を確認してください。");rec.income={entered:true,value:v};}if(bonusRaw!==""){const v=Number(bonusRaw);if(!Number.isFinite(v)||v<0)return alert("ボーナス額を確認してください。");rec.bonus={entered:true,value:v};}save();clearDirty("income");renderAll();}
+async function clearIncome(){if(!await appConfirm("前月の収入を未入力状態に戻しますか？",{title:"収入をクリア",confirmLabel:"未入力に戻す"}))return;const rec=selectedRecord();rec.income={entered:false,value:0};save();suppressDirty=true;$("income").value="";suppressDirty=false;clearDirty("income");renderAll();}
+async function clearBonus(){if(!await appConfirm("ボーナスを未入力状態に戻しますか？",{title:"ボーナスをクリア",confirmLabel:"未入力に戻す"}))return;const rec=selectedRecord();rec.bonus={entered:false,value:0};save();suppressDirty=true;$("bonus").value="";suppressDirty=false;clearDirty("income");renderAll();}
+async function saveSettings(){const ids=["minimumTakeHome","savingsTarget","extraAllowancePercent","extraSavingsPercent"],raw=ids.map(id=>$(id).value.trim());if(raw.some(v=>v===""))return alert("家計ルールはすべて入力してください。");const vals={minimumTakeHome:Number(raw[0]),savingsTarget:Number(raw[1]),extraAllowancePercent:Number(raw[2]),extraSavingsPercent:Number(raw[3])};if(Object.values(vals).some(v=>!Number.isFinite(v)||v<0))return alert("家計ルールの入力内容を確認してください。");if(vals.extraAllowancePercent>100||vals.extraSavingsPercent>100)return alert("割合は0〜100%で入力してください。");if(vals.extraAllowancePercent+vals.extraSavingsPercent!==100)return alert("超過分のお小遣い割合と貯金割合の合計を100%にしてください。");if(isPastSelected()&&!await appConfirm("過去月の予算結果が変わります。\n家計ルールを保存しますか？",{title:"過去月の家計ルール",confirmLabel:"保存する"}))return;selectedRecord().settings=normalizeSettings(vals);selectedRecord().inheritedFrom=null;save();clearDirty("settings");setHidden("settingsMissing",true);renderAll();}
+
+function renderAll'''
+          s = sub_once(s,
+              r'function saveIncome\(\)\{.*?\nfunction renderAll',
+              settings_block,
+              'income/settings confirmations')
+
+          m = re.search(r'function handleBackupObject\(data\)\{.*?\n\}\n\nfunction validateLegacyState', s, flags=re.S)
+          if not m:
+              raise SystemExit('handleBackupObject block not found')
+          block = m.group(0)
+          block = block.replace('function handleBackupObject(data){', 'async function handleBackupObject(data){', 1).replace('confirm(', 'await appConfirm(')
+          s = s[:m.start()] + block + s[m.end():]
+
+          bind_marker = '$("closeDeleteConfirm").onclick=closeDeleteConfirm;$("cancelDeleteConfirm").onclick=closeDeleteConfirm;$("confirmDeleteExpense").onclick=confirmDelete;$("deleteConfirmModal").addEventListener("click",e=>{if(e.target===$("deleteConfirmModal"))closeDeleteConfirm();});'
+          bind_new = '$("closeActionConfirm").onclick=()=>closeActionConfirm(false);$("cancelActionConfirm").onclick=()=>closeActionConfirm(false);$("confirmAction").onclick=()=>closeActionConfirm(true);$("actionConfirmModal").addEventListener("click",e=>{if(e.target===$("actionConfirmModal"))closeActionConfirm(false);});\n  ' + bind_marker
+          if bind_marker not in s:
+              raise SystemExit('confirmation bind marker not found')
+          s = s.replace(bind_marker, bind_new, 1)
+
+          if 'confirm(' in s:
+              matches = [line.strip() for line in s.splitlines() if 'confirm(' in line]
+              raise SystemExit('native confirm remains: ' + ' | '.join(matches[:8]))
+          p.write_text(s, encoding='utf-8')
+
+          h = Path('index.html')
+          html = h.read_text(encoding='utf-8')
+          modal = '''  <div id="actionConfirmModal" class="modal hidden"><div class="modal-box action-confirm-modal-box">
+            <div class="modal-header"><h2 id="actionConfirmTitle">確認</h2><button id="closeActionConfirm" class="close-btn" type="button">×</button></div>
+            <p id="actionConfirmMessage" class="confirm-message"></p>
+            <div class="modal-actions confirm-modal-actions"><button id="cancelActionConfirm" type="button" class="secondary-btn">キャンセル</button><button id="confirmAction" type="button">実行</button></div>
+          </div></div>
+
+'''.replace('\n          ','\n')
+          marker = '  <div id="deleteConfirmModal" class="modal hidden"><div class="modal-box">'
+          if marker not in html:
+              raise SystemExit('delete confirm modal marker not found')
+          html = html.replace(marker, modal + marker, 1)
+          if html.count('48.11') < 3:
+              raise SystemExit('expected index version references')
+          html = html.replace('48.11', '48.12')
+          h.write_text(html, encoding='utf-8')
+
+          c = Path('style.css')
+          css = c.read_text(encoding='utf-8')
+          old_footer = '.edit-footer-actions{justify-content:space-between}'
+          new_footer = '.edit-footer-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;justify-content:stretch}.edit-footer-actions button{width:100%;min-width:0}'
+          if old_footer not in css:
+              raise SystemExit('edit footer css marker not found')
+          css = css.replace(old_footer, new_footer, 1)
+          old_table = '.table-actions button{padding:3px 4px;font-size:9px;min-width:0;white-space:nowrap}'
+          new_table = '.table-actions button{padding:3px 4px;font-size:9px;min-width:0;white-space:nowrap;border-radius:5px}'
+          if old_table not in css:
+              raise SystemExit('table action css marker not found')
+          css = css.replace(old_table, new_table, 1)
+          old_mobile = '.table-actions button{padding:1px 2px;font-size:7.5px;min-width:0;min-height:18px;line-height:1.05;white-space:nowrap}'
+          new_mobile = '.table-actions button{padding:1px 2px;font-size:7.5px;min-width:0;min-height:18px;line-height:1.05;white-space:nowrap;border-radius:4px}'
+          if old_mobile not in css:
+              raise SystemExit('mobile table action css marker not found')
+          css = css.replace(old_mobile, new_mobile, 1)
+          chart_marker = '.chart-empty{padding:28px 10px;text-align:center;color:#7b838d;font-size:13px}'
+          chart_css = '.chart-plot-layout{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:6px;align-items:start;width:100%;min-width:0;max-width:100%}.chart-y-axis{height:210px;display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;padding:0 0 1px;font-size:9px;line-height:1;color:#747c86;white-space:nowrap;font-variant-numeric:tabular-nums}.vertical-bars{position:relative}.vertical-bars::before{content:"";position:absolute;inset:0 4px;pointer-events:none;background:linear-gradient(to bottom,rgba(116,124,134,.18) 1px,transparent 1px);background-size:100% 25%;z-index:0}.bar-column{position:relative;z-index:1}.confirm-modal-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.confirm-modal-actions button{width:100%;min-width:0}.action-confirm-modal-box{width:min(460px,100%)}' + chart_marker
+          if chart_marker not in css:
+              raise SystemExit('chart css marker not found')
+          css = css.replace(chart_marker, chart_css, 1)
+          css += '\n@media(max-width:680px){.chart-plot-layout{gap:4px}.chart-y-axis{font-size:8px}.edit-footer-actions{gap:7px}}\n@media(prefers-color-scheme:dark){.chart-y-axis{color:#aab2bc}.vertical-bars::before{background:linear-gradient(to bottom,rgba(170,178,188,.18) 1px,transparent 1px);background-size:100% 25%}}\n'
+          c.write_text(css, encoding='utf-8')
+
+          Path('README.md').write_text('''# 家計簿アプリ
+
+## ver.48.12
+- 日毎・月別の支出グラフに自動調整される金額目盛りを追加し、スマホ幅内で見やすいレイアウトに調整
+- 支出テーブルの「支出に確定」「編集」などの操作ボタンを、角丸を弱めた四角ベースの形に調整
+- 支出・予定支出の編集画面で「削除・キャンセル・保存」を横並びのまま均等配置に変更
+- 支出確定、未払いへ戻す、月またぎ変更などの確認をブラウザ標準ダイアログからアプリ内確認ウィンドウへ統一
+''', encoding='utf-8')
+          PY
+
+      - name: Validate patch
+        shell: bash
+        run: |
+          node --check app.js
+          node --check sw.js
+          git diff --check
+          grep -q 'const VERSION="48.12"' app.js
+          grep -q 'function niceChartAxis' app.js
+          grep -q 'chartYAxisHtml' app.js
+          grep -q 'async function confirmCrossMonth' app.js
+          grep -q 'function appConfirm' app.js
+          grep -q 'actionConfirmModal' index.html
+          grep -q 'ver.48.12' index.html
+          grep -q 'style.css?v=48.12' index.html
+          grep -q 'app.js?v=48.12' index.html
+          grep -q 'chart-y-axis' style.css
+          grep -q 'grid-template-columns:repeat(3,minmax(0,1fr))' style.css
+          grep -q 'border-radius:5px' style.css
+          ! grep -q 'confirm(' app.js
+          ! grep -q 'ver.48.11' README.md
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          app=Path('app.js').read_text(encoding='utf-8')
+          html=Path('index.html').read_text(encoding='utf-8')
+          css=Path('style.css').read_text(encoding='utf-8')
+          assert app.count('await appConfirm(') >= 12
+          assert html.count('id="actionConfirmModal"') == 1
+          assert html.count('id="confirmAction"') == 1
+          assert 'total/axis.max*100' in app
+          assert 'r.total/axis.max*100' in app
+          assert '.confirm-modal-actions' in css
+          print('ver.48.12 static UI checks passed')
+          PY
+
+      - name: Clean temporary workflow and commit
+        shell: bash
+        run: |
+          rm -f .github/workflows/ver4812-ui.yml
+          rmdir .github/workflows 2>/dev/null || true
+          rmdir .github 2>/dev/null || true
+          python3 - <<'PY'
+          from pathlib import Path
+          expected={'README.md','app.js','index.html','manifest.json','style.css','sw.js'}
+          actual={p.name for p in Path('.').iterdir() if p.name != '.git'}
+          if actual != expected:
+              raise SystemExit(f'final tree mismatch: {sorted(actual)}')
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Refine ver.48.12 graphs and confirmations'
+          git push origin develop
