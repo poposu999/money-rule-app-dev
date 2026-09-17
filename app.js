@@ -1,4 +1,4 @@
-const VERSION="49.02";
+const VERSION="49.03";
 const SCHEMA_VERSION=49;
 const PROD_STORAGE_KEYS={state:"moneyRuleAppV2",sections:"moneyRuleSectionPrefs",stats:"moneyRuleStatPrefs"};
 const LEGACY_STORAGE_KEYS={state:"moneyRuleDevAppV2",sections:"moneyRuleDevSectionPrefs",stats:"moneyRuleDevStatPrefs"};
@@ -601,7 +601,7 @@ let activePage = "home";
 let recordOpener = null;
 let overlayScrollY = 0;
 function syncOverlayLock(){
-  const locked = !$("recordSheet").classList.contains("hidden") || !$("appMenuOverlay").classList.contains("hidden");
+  const locked = $("annualYearDialog").open || !$("recordSheet").classList.contains("hidden") || !$("appMenuOverlay").classList.contains("hidden");
   if(locked && !document.body.classList.contains("navigation-locked")){
     overlayScrollY=window.scrollY;
     document.body.style.top=`-${overlayScrollY}px`;
@@ -703,7 +703,8 @@ function annualReportData(year,expenses){
 function renderAnnualReport(){
   if(!state)return;
   const report=annualReportData(annualYear,state.expenses);
-  $("annualYear").value=annualYear;
+  setText("annualYear",`${annualYear}年 ▾`);
+  setText("annualCategoryTitle",`${annualYear}年 カテゴリ別支出`);
   $("annualPrevYear").disabled=annualYear<=1000;$("annualNextYear").disabled=annualYear>=9999;
   setText("annualTotal",yen(report.total));
   setText("annualMonthValue","棒を押すと月の金額を確認できます。");
@@ -715,17 +716,49 @@ function renderAnnualReport(){
   $("annualDetails").innerHTML=report.months.map(m=>{
     const key=`${annualYear}-${pad2(m.month)}`,open=annualFoldState.get(key)!==false;
     const rows=m.items.map(e=>`<tr><td>${escapeHtml(formatExpenseDate(e.date))}</td><td class="memo-cell" data-memo="${escapeHtml(e.memo||'')}">${escapeHtml(e.memo||'—')}</td><td>${escapeHtml(e.category||'未設定')}</td><td class="amount-col">${yen(e.amount)}</td></tr>`).join("");
-    return `<details class="card annual-disclosure" data-annual-fold="${key}" ${open?'open':''}><summary><span>${m.month}月</span><strong class="annual-month-total">${yen(m.total)}</strong></summary>${rows?`<table class="annual-table"><caption class="visually-hidden">${annualYear}年${m.month}月の支出明細</caption><thead><tr><th scope="col">日付</th><th scope="col">メモ</th><th scope="col">カテゴリ</th><th scope="col" class="amount-col">金額</th></tr></thead><tbody>${rows}</tbody></table>`:'<p class="muted">支出はありません。</p>'}</details>`;
+    if(!m.items.length)return `<div class="card annual-empty-month"><span>${annualYear}年${m.month}月</span><span class="annual-empty-note">支出がありません</span><strong>¥0</strong></div>`;
+    return `<details class="card annual-disclosure" data-annual-fold="${key}" ${open?'open':''}><summary><span>${annualYear}年${m.month}月</span><strong class="annual-month-total">${yen(m.total)}</strong></summary>${`<table class="annual-table"><caption class="visually-hidden">${annualYear}年${m.month}月の支出明細</caption><thead><tr><th scope="col">日付</th><th scope="col">メモ</th><th scope="col">カテゴリ</th><th scope="col" class="amount-col">金額</th></tr></thead><tbody>${rows}</tbody></table>`}</details>`;
   }).join("");
 }
 function bindAnnualReport(){
-  const changeYear=value=>{const n=Number(value);if(!Number.isInteger(n)||n<1000||n>9999){$("annualYear").value=annualYear;return;}annualYear=n;renderAnnualReport();};
+  const changeYear=value=>{const n=Number(value);if(!Number.isInteger(n)||n<1000||n>9999)return;annualYear=n;renderAnnualReport();};
   $("annualPrevYear").onclick=()=>changeYear(annualYear-1);
   $("annualNextYear").onclick=()=>changeYear(annualYear+1);
-  $("annualYear").onchange=e=>changeYear(e.target.value);
-  $("annualYear").onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();changeYear(e.target.value);}};
+  $("annualYear").onclick=openYearWheel;
+  $("closeYearWheel").onclick=closeYearWheel;
+  $("cancelYearWheel").onclick=closeYearWheel;
+  $("annualYearDialog").addEventListener("cancel",e=>{e.preventDefault();closeYearWheel();});
+  $("annualYearDialog").addEventListener("click",e=>{if(e.target===$("annualYearDialog")){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)closeYearWheel();}});
+  $("confirmYearWheel").onclick=()=>{const year=wheelSelectedYear();closeYearWheel();changeYear(year);};
+  $("yearWheel").addEventListener("scroll",updateYearWheel,{passive:true});
+  $("yearWheel").onclick=e=>{const row=e.target.closest("[data-wheel-year]");if(row)$("yearWheel").scrollTo({top:(Number(row.dataset.wheelYear)-wheelStartYear)*44,behavior:"smooth"});};
+  $("yearWheel").onkeydown=e=>{const delta={ArrowUp:-1,ArrowDown:1,PageUp:-10,PageDown:10}[e.key];if(delta!==undefined){e.preventDefault();positionYearWheel(Math.max(1000,Math.min(9999,wheelSelectedYear()+delta)));}};
   $("annualMonthlyChart").onclick=e=>{const b=e.target.closest("[data-annual-month]");if(b)setText("annualMonthValue",`${annualYear}年${b.dataset.annualMonth}月：${b.getAttribute("aria-label").split(" ").slice(1).join(" ")}`);};
   document.querySelector('[data-app-page="annual"]').addEventListener("toggle",e=>{if(e.target.matches("details[data-annual-fold]"))annualFoldState.set(e.target.dataset.annualFold,e.target.open);},true);
+}
+
+let wheelStartYear=0;
+let wheelEndYear=0;
+function wheelSelectedYear(){return Math.max(1000,Math.min(9999,wheelStartYear+Math.round($("yearWheel").scrollTop/44)));}
+function wheelRows(start,end){return Array.from({length:end-start+1},(_,i)=>`<div class="year-wheel-row" data-wheel-year="${start+i}" aria-hidden="true">${start+i}年</div>`).join("");}
+function positionYearWheel(year){
+  wheelStartYear=Math.max(1000,year-50);wheelEndYear=Math.min(9999,year+50);
+  const wheel=$("yearWheel");wheel.innerHTML=wheelRows(wheelStartYear,wheelEndYear);wheel.scrollTop=(year-wheelStartYear)*44;updateYearWheel();
+}
+function updateYearWheel(){
+  const wheel=$("yearWheel");if(!$("annualYearDialog").open)return;
+  const year=wheelSelectedYear();
+  wheel.setAttribute("aria-valuenow",year);wheel.setAttribute("aria-valuetext",`${year}年`);
+  wheel.querySelectorAll(".year-wheel-row").forEach(row=>row.classList.toggle("selected",Number(row.dataset.wheelYear)===year));
+  // Grow the scroll range near either edge while keeping the visible year stationary.
+  if(year-wheelStartYear<10&&wheelStartYear>1000){const next=Math.max(1000,wheelStartYear-50),top=wheel.scrollTop;wheel.insertAdjacentHTML("afterbegin",wheelRows(next,wheelStartYear-1));wheel.scrollTop=top+(wheelStartYear-next)*44;wheelStartYear=next;}
+  if(wheelEndYear-year<10&&wheelEndYear<9999){const next=Math.min(9999,wheelEndYear+50);wheel.insertAdjacentHTML("beforeend",wheelRows(wheelEndYear+1,next));wheelEndYear=next;}
+}
+function openYearWheel(){
+  $("annualYearDialog").showModal();syncOverlayLock();positionYearWheel(annualYear);$("yearWheel").focus({preventScroll:true});
+}
+function closeYearWheel(){
+  $("annualYearDialog").close();syncOverlayLock();$("annualYear").focus({preventScroll:true});
 }
 
 bootstrap();
