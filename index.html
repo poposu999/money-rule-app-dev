@@ -8,11 +8,23 @@
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)"/>
 <meta name="theme-color" content="#111418" media="(prefers-color-scheme: dark)"/>
 <link rel="manifest" href="manifest.json"/>
-<link href="style.css?v=48.20" rel="stylesheet"/>
+<link href="style.css?v=49.01" rel="stylesheet"/>
 </head>
 <body>
 <div class="dev-environment-banner" role="status">検証環境</div>
 <main class="container" id="appRoot">
+  <header class="app-header"><h1>家計簿 <span class="header-version">ver.49.01</span></h1><button id="openAppMenu" class="secondary-btn menu-toggle" type="button" aria-label="メニューを開く" aria-expanded="false" aria-controls="appMenu">☰</button></header>
+  <div id="appMenuOverlay" class="menu-overlay hidden">
+    <nav id="appMenu" class="app-menu" aria-label="メインメニュー">
+      <div class="modal-header"><h2>メニュー</h2><button id="closeAppMenu" class="close-btn" type="button" aria-label="メニューを閉じる">×</button></div>
+      <button type="button" data-page-link="home" aria-current="page">ホーム</button>
+      <button type="button" data-page-link="annual">年間レポート</button>
+      <button type="button" data-page-link="rules">収入・家計ルール</button>
+      <button type="button" data-page-link="data">データ管理</button>
+    </nav>
+  </div>
+
+<div id="homePage" data-app-page="home">
   <section class="month-shell" aria-label="表示月の切り替え">
     <div class="month-nav">
       <button id="prevMonth" class="month-nav-arrow" type="button" aria-label="前の月">◀</button>
@@ -22,7 +34,6 @@
     <button id="returnCurrentMonth" class="secondary-btn return-current hidden" type="button">今月へ戻る</button>
     <div id="monthContextWarning" class="month-context-warning hidden"></div>
   </section>
-
   <section class="card budget-dashboard" data-section-content="progress">
     <div class="section-title budget-dashboard-title"><h2 id="budgetTitle">今月の予算</h2><button class="minus-btn" data-section="progress">−</button></div>
     <div class="budget-hero">
@@ -46,60 +57,6 @@
     </div>
     <div class="budget-status neutral" id="dashboardStatus"><strong id="dashboardStatusLabel">データ待ち</strong><span id="dashboardStatusMessage">収入を入力すると判定します。</span></div>
   </section>
-
-  <section class="card entry-section" data-section-content="entry-form">
-    <div class="section-title"><h2 id="entryTitle">支出 / 予定支出 / 固定費 を入力</h2><button class="minus-btn" data-section="entry-form">−</button></div>
-    <div aria-label="支出入力の種類" class="entry-tabs" role="tablist">
-      <button class="entry-tab active" data-entry-tab="expense" type="button">支出</button>
-      <button class="entry-tab" data-entry-tab="planned" type="button">支出予定</button>
-      <button class="entry-tab" data-entry-tab="fixed" type="button">固定費</button>
-    </div>
-    <div class="entry-panel active" data-entry-panel="expense" data-dirty-area="expense-entry">
-      <div class="entry-panel-heading" id="expenseEntryHeading">今月の支出を追加</div>
-      <div class="grid">
-        <label>金額<input id="expenseAmount" inputmode="numeric" min="0" placeholder="例)1000" step="100" type="number"/></label>
-        <label>カテゴリ<div class="category-quick" id="categoryQuick"></div><select class="category-select" id="expenseCategory"></select></label>
-        <label>メモ<input id="expenseMemo" placeholder="例)昼ごはん" type="text"/></label>
-        <label>日付<input id="expenseDate" type="date"/></label>
-      </div>
-      <button id="addExpense" type="button">登録する</button>
-    </div>
-    <div class="entry-panel" data-entry-panel="planned" data-dirty-area="planned-entry">
-      <div class="entry-panel-heading" id="plannedEntryHeading">今月の予定支出を追加</div>
-      <div class="grid">
-        <label>金額<input id="plannedAmount" inputmode="numeric" min="0" placeholder="例)5000" step="100" type="number"/></label>
-        <label>カテゴリ<div class="category-quick" id="plannedCategoryQuick"></div><select class="category-select" id="plannedCategory"></select></label>
-        <label>メモ<input id="plannedMemo" placeholder="例)飲み会など" type="text"/></label>
-        <label>予定日<input id="plannedDate" type="date"/></label>
-      </div>
-      <button id="addPlannedExpense" type="button">登録する</button>
-    </div>
-    <div class="entry-panel" data-entry-panel="fixed" data-dirty-area="fixed-entry">
-      <div class="entry-panel-heading" id="fixedEntryHeading">今月から固定費を開始</div>
-      <div class="grid">
-        <label>金額<input id="fixedAmount" inputmode="numeric" min="0" placeholder="例)10000" step="100" type="number"/></label>
-        <label>カテゴリ<div class="category-quick" id="fixedCategoryQuick"></div><select class="category-select" id="fixedCategory"></select></label>
-        <label>メモ<input id="fixedMemo" placeholder="例)家賃など" type="text"/></label>
-        <label>毎月の支払日<select id="fixedDue"></select></label>
-      </div>
-      <button id="addFixedExpense" type="button">登録する</button>
-    </div>
-  </section>
-
-  <section class="card" data-section-content="expense-list">
-    <div class="section-title expense-section-title"><h2 id="expenseListTitle">今月の支出</h2><div class="section-title-actions"><strong class="expense-total" id="expenseTotal">合計：¥0</strong><button class="minus-btn" data-section="expense-list">−</button></div></div>
-    <div class="expense-table-wrap" id="expenseList"></div>
-  </section>
-  <section class="card planned-section" data-section-content="planned-list">
-    <div class="section-title expense-section-title"><h2 id="plannedListTitle">今月の予定支出</h2><div class="section-title-actions"><strong class="expense-total" id="plannedTotal">合計：¥0</strong><button class="minus-btn" data-section="planned-list">−</button></div></div>
-    <div class="expense-table-wrap" id="plannedList"></div>
-  </section>
-  <section class="card fixed-section" data-section-content="fixed-list">
-    <div class="section-title expense-section-title"><h2 id="fixedListTitle">固定費一覧</h2><div class="section-title-actions"><strong class="expense-total" id="fixedTotal">合計：¥0</strong><button class="minus-btn" data-section="fixed-list">−</button></div></div>
-    <div id="fixedListWarning" class="inline-warning hidden"></div>
-    <div class="expense-table-wrap" id="fixedList"></div>
-  </section>
-
   <section class="card stats" data-section-content="stats">
     <div class="section-title full"><h2 id="statsTitle">今月の内訳</h2><button class="minus-btn" data-section="stats">−</button></div>
     <div class="stat"><span id="spendingBudgetLabel">予算</span><strong id="spendingBudget">—</strong></div>
@@ -111,7 +68,22 @@
     <div class="stat" id="extraIncomeStat"><span>超過分</span><strong id="extraIncome">—</strong></div>
     <div class="income-restore" id="incomeRestore"><button id="incomeToggle" class="secondary-btn" type="button">前月の収入を非表示</button></div>
   </section>
-
+  <section class="card" data-section-content="expense-list">
+    <div class="section-title expense-section-title"><h2 id="expenseListTitle">今月の支出</h2><div class="section-title-actions"><strong class="expense-total" id="expenseTotal">合計：¥0</strong><button class="minus-btn" data-section="expense-list">−</button></div></div>
+    <div class="expense-table-wrap" id="expenseList"></div>
+    <button class="secondary-btn list-add-button" type="button" data-open-record="expense">＋ 支出を追加</button>
+  </section>
+  <section class="card planned-section" data-section-content="planned-list">
+    <div class="section-title expense-section-title"><h2 id="plannedListTitle">今月の予定支出</h2><div class="section-title-actions"><strong class="expense-total" id="plannedTotal">合計：¥0</strong><button class="minus-btn" data-section="planned-list">−</button></div></div>
+    <div class="expense-table-wrap" id="plannedList"></div>
+    <button class="secondary-btn list-add-button" type="button" data-open-record="planned">＋ 予定支出を追加</button>
+  </section>
+  <section class="card fixed-section" data-section-content="fixed-list">
+    <div class="section-title expense-section-title"><h2 id="fixedListTitle">固定費一覧</h2><div class="section-title-actions"><strong class="expense-total" id="fixedTotal">合計：¥0</strong><button class="minus-btn" data-section="fixed-list">−</button></div></div>
+    <div id="fixedListWarning" class="inline-warning hidden"></div>
+    <div class="expense-table-wrap" id="fixedList"></div>
+    <button class="secondary-btn list-add-button" type="button" data-open-record="fixed">＋ 固定費を追加</button>
+  </section>
   <section class="card charts" data-section-content="charts">
     <div class="section-title full"><h2>グラフ</h2><button class="minus-btn" data-section="charts">−</button></div>
     <div class="card chart-card"><h2>カテゴリ別の支出</h2><div id="categoryChart" class="stack-chart"></div></div>
@@ -119,7 +91,6 @@
     <div class="card chart-card"><h2>月別の支出</h2><div id="monthlyChart" class="bar-chart-scroll"></div></div>
     <div id="chartPopup" class="chart-popup hidden" role="status"></div>
   </section>
-
   <section class="card" data-section-content="income" data-dirty-area="income">
     <div class="section-title"><h2 id="incomeTitle">前月の収入</h2><button class="minus-btn" data-section="income">−</button></div>
     <label>前月の収入<input id="income" inputmode="numeric" min="0" placeholder="例)250000" step="1000" type="number"/></label>
@@ -128,7 +99,6 @@
     <div class="field-actions"><button id="clearBonus" class="secondary-btn" type="button">入力をクリア</button></div>
     <button id="saveIncome" type="button">収入を保存</button>
   </section>
-
   <section class="card" data-section-content="settings" data-dirty-area="settings">
     <div class="section-title"><h2 id="settingsTitle">家計ルール</h2><button class="minus-btn" data-section="settings">−</button></div>
     <div id="settingsMissing" class="inline-warning hidden">家計ルールを入力してください。</div>
@@ -141,8 +111,11 @@
     <button id="saveSettings" type="button">ルールを保存</button>
     <div id="inputValidation" class="validation-warning hidden"></div>
   </section>
+</div>
 
-  <section class="card" data-section-content="data-tools">
+  <section class="card hidden" data-app-page="annual" aria-labelledby="annualPageTitle"><h2 id="annualPageTitle" tabindex="-1">年間レポート</h2><p class="muted">年間レポートは準備中です。</p><button type="button" class="secondary-btn" data-page-link="home">ホームへ戻る</button></section>
+  <section class="card hidden" data-app-page="rules" aria-labelledby="rulesPageTitle"><h2 id="rulesPageTitle" tabindex="-1">収入・家計ルール</h2><p class="muted">年間一覧は準備中です。収入・家計ルールは、ホームの下部で引き続き入力できます。</p><button id="goToIncome" type="button" class="secondary-btn">ホームで入力する</button></section>
+  <div class="hidden" data-app-page="data">  <section class="card" data-section-content="data-tools">
     <div class="section-title"><h2>データ管理</h2><button class="minus-btn" data-section="data-tools">−</button></div>
     <p class="entry-hint" id="migrationStateStatus">移行状態を確認中...</p>
     <h3>データ整合性チェック</h3>
@@ -154,7 +127,48 @@
     <p class="muted">検証環境のデータだけを書き出し・復元します。本番データには触れません。</p>
     <div class="backup-actions"><button id="exportBackup" type="button">バックアップを書き出す</button><button class="secondary-btn" id="importBackupButton" type="button">バックアップを読み込む</button><input accept="application/json,.json" hidden id="importBackup" type="file"/></div>
     <p class="entry-hint" id="backupStatus"></p>
-  </section>
+  </section></div>
+  <button id="recordButton" class="record-fab" type="button" data-open-record="expense">＋ 記録</button>
+  <div id="recordSheet" class="modal record-sheet hidden" role="dialog" aria-modal="true" aria-labelledby="entryTitle">  <section class="modal-box entry-section record-sheet-box">
+    <div class="section-title"><h2 id="entryTitle">記録を追加</h2><button id="closeRecord" class="close-btn" type="button" aria-label="記録画面を閉じる">×</button></div>
+    <p class="entry-hint" id="recordMonthLabel"></p>
+    <div aria-label="支出入力の種類" class="entry-tabs" role="tablist">
+      <button class="entry-tab active" data-entry-tab="expense" type="button">支出</button>
+      <button class="entry-tab" data-entry-tab="planned" type="button">予定支出</button>
+      <button class="entry-tab" data-entry-tab="fixed" type="button">固定費</button>
+    </div>
+    <div class="entry-panel active" data-entry-panel="expense" data-dirty-area="expense-entry">
+      <div class="entry-panel-heading" id="expenseEntryHeading">今月の支出を追加</div>
+      <div class="grid">
+        <label>金額<input id="expenseAmount" inputmode="numeric" min="0" placeholder="例)1000" step="100" type="number"/></label>
+        <label>カテゴリ<div class="category-quick" id="categoryQuick"></div><select class="category-select" id="expenseCategory"></select></label>
+        <label>メモ<input id="expenseMemo" placeholder="例)昼ごはん" type="text"/></label>
+        <label>日付<input id="expenseDate" type="date"/></label>
+      </div>
+      <button id="addExpense" type="button">登録</button>
+    </div>
+    <div class="entry-panel" data-entry-panel="planned" data-dirty-area="planned-entry">
+      <div class="entry-panel-heading" id="plannedEntryHeading">今月の予定支出を追加</div>
+      <div class="grid">
+        <label>金額<input id="plannedAmount" inputmode="numeric" min="0" placeholder="例)5000" step="100" type="number"/></label>
+        <label>カテゴリ<div class="category-quick" id="plannedCategoryQuick"></div><select class="category-select" id="plannedCategory"></select></label>
+        <label>メモ<input id="plannedMemo" placeholder="例)飲み会など" type="text"/></label>
+        <label>予定日<input id="plannedDate" type="date"/></label>
+      </div>
+      <button id="addPlannedExpense" type="button">登録</button>
+    </div>
+    <div class="entry-panel" data-entry-panel="fixed" data-dirty-area="fixed-entry">
+      <div class="entry-panel-heading" id="fixedEntryHeading">今月から固定費を開始</div>
+      <div class="grid">
+        <label>金額<input id="fixedAmount" inputmode="numeric" min="0" placeholder="例)10000" step="100" type="number"/></label>
+        <label>カテゴリ<div class="category-quick" id="fixedCategoryQuick"></div><select class="category-select" id="fixedCategory"></select></label>
+        <label>メモ<input id="fixedMemo" placeholder="例)家賃など" type="text"/></label>
+        <label>毎月の支払日<select id="fixedDue"></select></label>
+      </div>
+      <button id="addFixedExpense" type="button">登録</button>
+    </div>
+    <p class="entry-hint">閉じても、入力途中の内容はこの画面に残ります。</p>
+  </section></div>
 
   <div id="monthPickerModal" class="modal hidden"><div class="modal-box month-picker-box">
     <div class="modal-header"><h2>年月を選択</h2><button id="closeMonthPicker" class="close-btn" type="button">×</button></div>
@@ -221,9 +235,9 @@
   </div></div>
 
   <div id="memoPopup" class="memo-popup hidden" role="status"></div>
-  <footer class="app-footer"><h1>家計簿 <span class="app-version">ver.48.20</span></h1><p>Ver.49月別管理の検証版</p></footer>
+  <footer class="app-footer"><h1>家計簿 <span class="app-version">ver.49.01</span></h1><p>画面分割・記録画面の検証版</p></footer>
 </main>
-<script src="app.js?v=48.20"></script>
+<script src="app.js?v=49.01"></script>
 <script>
 if ("serviceWorker" in navigator) {
   let reloading = false;
@@ -242,5 +256,4 @@ if ("serviceWorker" in navigator) {
 </script>
 </body>
 </html>
-
 

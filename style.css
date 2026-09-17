@@ -168,3 +168,27 @@ input[type="date"]::-webkit-datetime-edit-fields-wrapper{
   .fixed-delete-actions,.fixed-edit-actions{gap:7px}
   .fixed-delete-actions button,.fixed-edit-actions button{padding-left:5px;padding-right:5px;font-size:12px}
 }
+
+/* ver.49.01: compact navigation and shared record sheet */
+.app-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 14px}
+.app-header h1{font-size:20px;margin:0}.header-version{font-size:12px;font-weight:500;color:#737c87}
+.menu-toggle{font-size:23px;padding:4px 10px;min-width:44px;min-height:44px}
+.container{padding-bottom:110px}
+.record-fab{position:fixed;right:max(16px,calc((100vw - 980px)/2 + 14px));bottom:calc(18px + env(safe-area-inset-bottom));z-index:2100;border:1px solid #818995;border-radius:28px;padding:14px 21px;box-shadow:0 4px 18px #0003;font-size:16px;min-height:50px}
+.list-add-button{display:block;width:100%;margin-top:14px;min-height:44px}
+.navigation-locked{position:fixed;width:100%;overflow:hidden}
+.menu-overlay{position:fixed;inset:0;background:#0005;z-index:2400;padding:48px 14px 14px}
+.app-menu{margin-left:auto;width:min(310px,100%);background:#fff;border:1px solid #e2e5e9;border-radius:14px;padding:16px;box-shadow:0 12px 36px #0003}
+.app-menu>button{display:block;width:100%;text-align:left;margin-top:7px;background:transparent;color:#343a43;min-height:46px}
+.app-menu>button[aria-current="page"]{background:#eef0f3}
+.modal.record-sheet{align-items:flex-end;padding:0;z-index:2450}
+.record-sheet-box{width:min(600px,100%);max-height:90vh;max-height:90dvh;border-radius:20px 20px 0 0;margin:0;padding:20px 18px calc(18px + env(safe-area-inset-bottom));overscroll-behavior:contain;animation:record-sheet-in .2s ease-out}
+.record-sheet-box .section-title{margin-bottom:8px}
+.record-sheet-box .grid{grid-template-columns:1fr}
+.record-sheet-box input,.record-sheet-box select{font-size:16px}
+.record-sheet-box .entry-panel>button{width:100%;min-height:46px}
+.record-sheet-box .entry-tabs{position:sticky;top:-20px;background:#fff;padding:8px 0;z-index:1}
+.record-sheet-box .entry-hint{line-height:1.5}
+@keyframes record-sheet-in{from{transform:translateY(35px);opacity:.6}to{transform:translateY(0);opacity:1}}
+@media(prefers-reduced-motion:reduce){.record-sheet-box{animation:none}}
+@media(prefers-color-scheme:dark){.app-menu,.record-sheet-box .entry-tabs{background:#181c21;border-color:#303640}.app-menu>button{color:#e5e7eb}.app-menu>button[aria-current="page"]{background:#303640}.header-version{color:#a5adb8}}

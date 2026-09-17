@@ -1,4 +1,4 @@
-const VERSION="48.20";
+const VERSION="49.01";
 const SCHEMA_VERSION=49;
 const PROD_STORAGE_KEYS={state:"moneyRuleAppV2",sections:"moneyRuleSectionPrefs",stats:"moneyRuleStatPrefs"};
 const LEGACY_STORAGE_KEYS={state:"moneyRuleDevAppV2",sections:"moneyRuleDevSectionPrefs",stats:"moneyRuleDevStatPrefs"};
@@ -391,11 +391,11 @@ function renderMonthlyChart(){
 function nextOrderForDate(items,date){const vals=items.filter(x=>x.date===date).map(x=>Number(x.order)||0);return (vals.length?Math.max(...vals):Date.now())+1;}
 function validateAmount(value){const n=Number(value);return Number.isFinite(n)&&n>0?n:null;}
 async function addExpense(){
-  const amount=validateAmount($("expenseAmount").value),date=$("expenseDate").value,category=$("expenseCategory").value,memo=$("expenseMemo").value.trim();if(!amount){appAlert("金額を入力してください。");return;}if(!isValidDateString(date)||!dateAllowed(date)){appAlert("登録できる日付を確認してください。未来は現在月から1年先までです。");return;}const dest=monthOfDate(date);if(!(await confirmCrossMonth(selectedMonth,dest,"支出")))return;const e={id:newId("e"),amount,category:category||"その他",memo,date,order:nextOrderForDate(state.expenses,date),origin:null};state.expenses.push(e);state.memory.expenseCategory=category||"食費";rememberSessionDate("expense",date);save();clearDirty("expense-entry");if(dest!==selectedMonth){switchMonth(dest,{force:true});return;}$("expenseAmount").value="";$("expenseMemo").value="";$("expenseDate").value=sessionDefaultDate("expense",selectedMonth);renderAll();}
+  const amount=validateAmount($("expenseAmount").value),date=$("expenseDate").value,category=$("expenseCategory").value,memo=$("expenseMemo").value.trim();if(!amount){appAlert("金額を入力してください。");return;}if(!isValidDateString(date)||!dateAllowed(date)){appAlert("登録できる日付を確認してください。未来は現在月から1年先までです。");return;}const dest=monthOfDate(date);if(!(await confirmCrossMonth(selectedMonth,dest,"支出")))return;const e={id:newId("e"),amount,category:category||"その他",memo,date,order:nextOrderForDate(state.expenses,date),origin:null};state.expenses.push(e);state.memory.expenseCategory=category||"食費";rememberSessionDate("expense",date);save();clearDirty("expense-entry");closeRecordSheet();if(dest!==selectedMonth){switchMonth(dest,{force:true});return;}$("expenseAmount").value="";$("expenseMemo").value="";$("expenseDate").value=sessionDefaultDate("expense",selectedMonth);renderAll();}
 async function addPlanned(){
-  const amount=validateAmount($("plannedAmount").value),date=$("plannedDate").value,category=$("plannedCategory").value,memo=$("plannedMemo").value.trim();if(!amount){appAlert("金額を入力してください。");return;}if(!isValidDateString(date)||!dateAllowed(date)){appAlert("登録できる予定日を確認してください。未来は現在月から1年先までです。");return;}const dest=monthOfDate(date);if(!(await confirmCrossMonth(selectedMonth,dest,"予定支出")))return;const p={id:newId("p"),amount,category:category||"その他",memo,date,order:nextOrderForDate(state.plannedExpenses,date),status:"pending",confirmedExpenseId:null};state.plannedExpenses.push(p);state.memory.plannedCategory=category||"食費";rememberSessionDate("planned",date);save();clearDirty("planned-entry");if(dest!==selectedMonth){switchMonth(dest,{force:true});return;}$("plannedAmount").value="";$("plannedMemo").value="";$("plannedDate").value=sessionDefaultDate("planned",selectedMonth);renderAll();}
+  const amount=validateAmount($("plannedAmount").value),date=$("plannedDate").value,category=$("plannedCategory").value,memo=$("plannedMemo").value.trim();if(!amount){appAlert("金額を入力してください。");return;}if(!isValidDateString(date)||!dateAllowed(date)){appAlert("登録できる予定日を確認してください。未来は現在月から1年先までです。");return;}const dest=monthOfDate(date);if(!(await confirmCrossMonth(selectedMonth,dest,"予定支出")))return;const p={id:newId("p"),amount,category:category||"その他",memo,date,order:nextOrderForDate(state.plannedExpenses,date),status:"pending",confirmedExpenseId:null};state.plannedExpenses.push(p);state.memory.plannedCategory=category||"食費";rememberSessionDate("planned",date);save();clearDirty("planned-entry");closeRecordSheet();if(dest!==selectedMonth){switchMonth(dest,{force:true});return;}$("plannedAmount").value="";$("plannedMemo").value="";$("plannedDate").value=sessionDefaultDate("planned",selectedMonth);renderAll();}
 function addFixed(){
-  const amount=validateAmount($("fixedAmount").value),category=$("fixedCategory").value,memo=$("fixedMemo").value.trim(),due=valueToDue($("fixedDue").value);if(!amount){appAlert("金額を入力してください。");return;}if(!category){appAlert("カテゴリを選択してください。");return;}if(!due){appAlert("支払日を選択してください。");return;}state.fixedExpenses.push({id:newId("f"),startMonth:selectedMonth,endMonth:null,changes:[{effectiveMonth:selectedMonth,amount,category,memo,due}],paidMonths:{},needsReview:false,order:Date.now()});state.memory.fixedCategory=category;save();clearDirty("fixed-entry");$("fixedAmount").value="";$("fixedMemo").value="";$("fixedDue").value="";renderAll();}
+  const amount=validateAmount($("fixedAmount").value),category=$("fixedCategory").value,memo=$("fixedMemo").value.trim(),due=valueToDue($("fixedDue").value);if(!amount){appAlert("金額を入力してください。");return;}if(!category){appAlert("カテゴリを選択してください。");return;}if(!due){appAlert("支払日を選択してください。");return;}state.fixedExpenses.push({id:newId("f"),startMonth:selectedMonth,endMonth:null,changes:[{effectiveMonth:selectedMonth,amount,category,memo,due}],paidMonths:{},needsReview:false,order:Date.now()});state.memory.fixedCategory=category;save();clearDirty("fixed-entry");closeRecordSheet();$("fixedAmount").value="";$("fixedMemo").value="";$("fixedDue").value="";renderAll();}
 
 async function confirmPlanned(id){const p=getPlannedSource(id);if(!p||p.status==="confirmed")return;if(!await appConfirm(`${formatExpenseDate(p.date)} ${p.memo||p.category} ${yen(p.amount)} を支出に確定しますか？`))return;const e={id:newId("e"),amount:p.amount,category:p.category,memo:p.memo||"",date:p.date,order:nextOrderForDate(state.expenses,p.date),origin:{type:"planned",sourceId:p.id,sourceMonth:monthOfDate(p.date),snapshot:{amount:p.amount,category:p.category,memo:p.memo||"",date:p.date}}};state.expenses.push(e);p.status="confirmed";p.confirmedExpenseId=e.id;save();renderAll();}
 async function confirmFixed(id){const f=getFixedSource(id),config=configForFixedMonth(f,selectedMonth);if(!f||!config||fixedIsPaid(f,selectedMonth)||!config.due)return;const date=fixedDueDate(f,selectedMonth,config);if(!await appConfirm(`${formatExpenseDate(date)} ${config.memo||config.category} ${yen(config.amount)} を支出に確定しますか？`))return;const e={id:newId("e"),amount:config.amount,category:config.category||"未設定",memo:config.memo||"",date,order:nextOrderForDate(state.expenses,date),origin:{type:"fixed",sourceId:f.id,sourceMonth:selectedMonth,snapshot:{amount:config.amount,category:config.category||"未設定",memo:config.memo||"",date}}};state.expenses.push(e);f.paidMonths[selectedMonth]={expenseId:e.id,confirmedAt:new Date().toISOString()};save();renderAll();}
@@ -549,6 +549,7 @@ function refreshDateContext(){const now=getToday();if(now===lastKnownToday)retur
 
 function bindEvents(){
   bindDirtyTracking();
+  bindPageNavigation();
   $("prevMonth").onclick=()=>switchMonth(addMonths(selectedMonth,-1));$("nextMonth").onclick=()=>switchMonth(addMonths(selectedMonth,1));$("returnCurrentMonth").onclick=()=>switchMonth(currentMonthKey());
   $("openMonthPicker").onclick=()=>{selectedPickerYear=monthParts(selectedMonth).y;earliestPickerYear=Math.min(selectedPickerYear-10,new Date().getFullYear()-10);renderMonthPicker();$("monthPickerModal").classList.remove("hidden");setTimeout(()=>{const active=$("yearList").querySelector(".year-btn.active");active?.scrollIntoView({block:"center"});},0);};$("closeMonthPicker").onclick=()=>$("monthPickerModal").classList.add("hidden");$("monthPickerModal").addEventListener("click",e=>{if(e.target===$("monthPickerModal"))$("monthPickerModal").classList.add("hidden");});
   $("yearList").addEventListener("click",e=>{const b=e.target.closest("[data-year]");if(b)renderMonthGrid(Number(b.dataset.year));});let extendingYears=false;$("yearList").addEventListener("scroll",()=>{const el=$("yearList");if(!extendingYears&&el.scrollTop+el.clientHeight>=el.scrollHeight-40){extendingYears=true;const oldTop=el.scrollTop;earliestPickerYear-=10;renderMonthPicker();requestAnimationFrame(()=>{el.scrollTop=oldTop;extendingYears=false;});}});$("monthGrid").addEventListener("click",e=>{const b=e.target.closest("[data-month]");if(!b)return;const key=b.dataset.month;$("monthPickerModal").classList.add("hidden");switchMonth(key);});
@@ -593,6 +594,95 @@ function bootstrap(){
   selectedMonth=currentMonthKey();loadMonthForms();resetEntryTab();renderAll();
   setMigrationStateStatus("旧ver.48.02検証データが見つからないため、新規Ver.49検証データとして開始しています。");
 }
+
+// Page navigation and the shared record sheet do not change the stored budget schema.
+let activePage = "home";
+let recordOpener = null;
+let overlayScrollY = 0;
+function syncOverlayLock(){
+  const locked = !$("recordSheet").classList.contains("hidden") || !$("appMenuOverlay").classList.contains("hidden");
+  if(locked && !document.body.classList.contains("navigation-locked")){
+    overlayScrollY=window.scrollY;
+    document.body.style.top=`-${overlayScrollY}px`;
+    document.body.classList.add("navigation-locked");
+  }else if(!locked && document.body.classList.contains("navigation-locked")){
+    document.body.classList.remove("navigation-locked");
+    document.body.style.top="";
+    window.scrollTo(0,overlayScrollY);
+  }
+  document.querySelectorAll("[data-app-page], .app-header, .app-footer, #recordButton").forEach(el=>{el.inert=locked;});
+}
+function closeAppMenu(){
+  $("appMenuOverlay").classList.add("hidden");
+  $("openAppMenu").setAttribute("aria-expanded","false");
+  syncOverlayLock();
+  $("openAppMenu").focus({preventScroll:true});
+}
+function showAppPage(page){
+  if(!["home","annual","rules","data"].includes(page))return;
+  activePage=page;
+  closeAppMenu();
+  document.querySelectorAll("[data-app-page]").forEach(el=>el.classList.toggle("hidden",el.dataset.appPage!==page));
+  document.querySelectorAll("#appMenu [data-page-link]").forEach(el=>{
+    if(el.dataset.pageLink===page)el.setAttribute("aria-current","page");
+    else el.removeAttribute("aria-current");
+  });
+  setHidden("recordButton",page!=="home");
+  setHidden("chartPopup",true);setHidden("memoPopup",true);
+  window.scrollTo({top:0,behavior:"auto"});
+  const title=document.querySelector(`[data-app-page="${page}"] h2`);
+  if(title){title.tabIndex=-1;title.focus({preventScroll:true});}
+}
+function openRecordSheet(type,opener){
+  if(!state || activePage!=="home")return;
+  recordOpener=opener;
+  document.querySelector(`[data-entry-tab="${type}"]`)?.click();
+  setText("recordMonthLabel",`対象月：${monthLabel(selectedMonth)}`);
+  $("recordSheet").classList.remove("hidden");
+  $("recordSheet").querySelector(".record-sheet-box").scrollTop=0;
+  syncOverlayLock();
+  $("closeRecord").focus({preventScroll:true});
+}
+function closeRecordSheet(){
+  $("recordSheet").classList.add("hidden");
+  syncOverlayLock();
+  if(recordOpener?.isConnected)recordOpener.focus({preventScroll:true});
+}
+function bindPageNavigation(){
+  $("openAppMenu").onclick=()=>{
+    $("appMenuOverlay").classList.remove("hidden");
+    $("openAppMenu").setAttribute("aria-expanded","true");
+    syncOverlayLock();$("closeAppMenu").focus();
+  };
+  $("closeAppMenu").onclick=closeAppMenu;
+  $("appMenuOverlay").onclick=e=>{if(e.target===$("appMenuOverlay"))closeAppMenu();};
+  document.querySelectorAll("[data-page-link]").forEach(b=>b.onclick=()=>showAppPage(b.dataset.pageLink));
+  $("goToIncome").onclick=()=>{
+    showAppPage("home");
+    const prefs=readJson(STORAGE_KEYS.sections,{})||{};prefs.income=false;writeJson(STORAGE_KEYS.sections,prefs);applySectionPrefs();
+    document.querySelector('[data-section-content="income"]').scrollIntoView({block:"start"});
+    $("income").focus({preventScroll:true});
+  };
+  document.querySelectorAll("[data-open-record]").forEach(b=>b.onclick=()=>openRecordSheet(b.dataset.openRecord,b));
+  $("closeRecord").onclick=closeRecordSheet;
+  $("recordSheet").onclick=e=>{if(e.target===$("recordSheet"))closeRecordSheet();};
+  document.addEventListener("keydown",e=>{
+    const nested=["appAlertModal","appConfirmModal","migrationModal"].some(id=>!$(id).classList.contains("hidden"));
+    if(nested)return;
+    const sheet=!$("recordSheet").classList.contains("hidden");
+    const menu=!$("appMenuOverlay").classList.contains("hidden");
+    if(!sheet&&!menu)return;
+    if(e.key==="Escape"){e.preventDefault();sheet?closeRecordSheet():closeAppMenu();}
+    if(e.key==="Tab"){
+      const root=sheet?$("recordSheet"):$("appMenu");
+      const controls=[...root.querySelectorAll('button, input, select, [tabindex="0"]')].filter(el=>!el.disabled&&el.getClientRects().length);
+      const first=controls[0],last=controls.at(-1);
+      if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus();}
+      else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}
+    }
+  });
+}
+
 bootstrap();
 
 
