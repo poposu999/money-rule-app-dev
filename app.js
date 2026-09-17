@@ -1,4 +1,4 @@
-const VERSION="49.03";
+const VERSION="49.04";
 const SCHEMA_VERSION=49;
 const PROD_STORAGE_KEYS={state:"moneyRuleAppV2",sections:"moneyRuleSectionPrefs",stats:"moneyRuleStatPrefs"};
 const LEGACY_STORAGE_KEYS={state:"moneyRuleDevAppV2",sections:"moneyRuleDevSectionPrefs",stats:"moneyRuleDevStatPrefs"};
@@ -401,12 +401,20 @@ async function confirmPlanned(id){const p=getPlannedSource(id);if(!p||p.status==
 async function confirmFixed(id){const f=getFixedSource(id),config=configForFixedMonth(f,selectedMonth);if(!f||!config||fixedIsPaid(f,selectedMonth)||!config.due)return;const date=fixedDueDate(f,selectedMonth,config);if(!await appConfirm(`${formatExpenseDate(date)} ${config.memo||config.category} ${yen(config.amount)} を支出に確定しますか？`))return;const e={id:newId("e"),amount:config.amount,category:config.category||"未設定",memo:config.memo||"",date,order:nextOrderForDate(state.expenses,date),origin:{type:"fixed",sourceId:f.id,sourceMonth:selectedMonth,snapshot:{amount:config.amount,category:config.category||"未設定",memo:config.memo||"",date}}};state.expenses.push(e);f.paidMonths[selectedMonth]={expenseId:e.id,confirmedAt:new Date().toISOString()};save();renderAll();}
 function expenseChangedFromSnapshot(e){const s=e?.origin?.snapshot;if(!s)return false;return Number(s.amount)!==Number(e.amount)||String(s.category||"")!==String(e.category||"")||String(s.memo||"")!==String(e.memo||"")||String(s.date||"")!==String(e.date||"");}
 async function unpayFixed(id,month=selectedMonth){const f=getFixedSource(id),info=fixedPaidInfo(f,month);if(!f||!info)return;const e=state.expenses.find(x=>String(x.id)===String(info.expenseId));if(e&&expenseChangedFromSnapshot(e)){if(!await appConfirm("手動編集した支出も削除されます。実支出を削除して未払いへ戻しますか？"))return;}else if(!await appConfirm("実支出を削除して未払いへ戻します。続行しますか？"))return;if(e)state.expenses=state.expenses.filter(x=>String(x.id)!==String(e.id));delete f.paidMonths[month];save();renderAll();}
-async function rollbackPlannedExpense(e){const p=getPlannedSource(e.origin?.sourceId);if(!p)return appAlert("元の予定支出が見つかりません。");if(!await appConfirm("実支出を削除して予定支出へ戻します。続行しますか？"))return;p.amount=e.amount;p.category=e.category;p.memo=e.memo||"";p.date=e.date;p.order=nextOrderForDate(state.plannedExpenses,p.date);p.status="pending";p.confirmedExpenseId=null;state.expenses=state.expenses.filter(x=>String(x.id)!==String(e.id));rememberSessionDate("planned",p.date);save();closeEdit();const dest=monthOfDate(p.date);if(dest!==selectedMonth){switchMonth(dest,{force:true});return;}renderAll();}
-async function rollbackFixedExpense(e){const month=e.origin?.sourceMonth,f=getFixedSource(e.origin?.sourceId);if(!f||!month)return appAlert("元の固定費が見つかりません。");await unpayFixed(f.id,month);if(fixedPaidInfo(f,month))return;closeEdit();if(month!==selectedMonth)await switchMonth(month,{force:true});}
+async function rollbackPlannedExpense(e){const p=getPlannedSource(e.origin?.sourceId);if(!p)return appAlert("元の予定支出が見つかりません。");if(!await appConfirm("実支出を削除して予定支出へ戻します。続行しますか？"))return;p.amount=e.amount;p.category=e.category;p.memo=e.memo||"";p.date=e.date;p.order=nextOrderForDate(state.plannedExpenses,p.date);p.status="pending";p.confirmedExpenseId=null;state.expenses=state.expenses.filter(x=>String(x.id)!==String(e.id));rememberSessionDate("planned",p.date);save();const annualContext=closeEdit();if(annualContext){renderAll();return;}const dest=monthOfDate(p.date);if(dest!==selectedMonth){switchMonth(dest,{force:true});return;}renderAll();}
+async function rollbackFixedExpense(e){const month=e.origin?.sourceMonth,f=getFixedSource(e.origin?.sourceId);if(!f||!month)return appAlert("元の固定費が見つかりません。");await unpayFixed(f.id,month);if(fixedPaidInfo(f,month))return;const annualContext=closeEdit();if(annualContext){renderAll();return;}if(month!==selectedMonth)await switchMonth(month,{force:true});}
 
-function openEdit(id){const e=state.expenses.find(x=>String(x.id)===String(id));if(!e)return;$("editModal").dataset.id=e.id;suppressDirty=true;$("editAmount").value=e.amount;ensureSelectOption("editCategory",e.category);$("editCategory").value=e.category;$("editMemo").value=e.memo||"";$("editDate").value=e.date;const type=expenseOriginType(e),rollback=$("rollbackOrigin");if(type==="planned"){rollback.textContent="予定支出に戻す";rollback.classList.remove("hidden");}else if(type==="fixed"){rollback.textContent="固定費を未払いに戻す";rollback.classList.remove("hidden");}else rollback.classList.add("hidden");suppressDirty=false;clearDirty("expense-edit");$("editModal").classList.remove("hidden");}
-function closeEdit(){clearDirty("expense-edit");$("editModal").classList.add("hidden");}
-async function saveExpenseEdit(){const e=state.expenses.find(x=>String(x.id)===String($("editModal").dataset.id));if(!e)return;const amount=validateAmount($("editAmount").value),date=$("editDate").value;if(!amount)return appAlert("金額を入力してください。");if(!isValidDateString(date)||!dateAllowed(date))return appAlert("日付を確認してください。");const sourceMonth=monthOfDate(e.date),dest=monthOfDate(date);if(!(await confirmCrossMonth(sourceMonth,dest,"支出")))return;e.amount=amount;e.category=$("editCategory").value;e.memo=$("editMemo").value.trim();if(e.date!==date)e.order=nextOrderForDate(state.expenses,date);e.date=date;rememberSessionDate("expense",date);save();closeEdit();if(dest!==selectedMonth){switchMonth(dest,{force:true});return;}renderAll();}
+let annualEditContext=null;
+function openEdit(id,fromAnnual=false){const e=state.expenses.find(x=>String(x.id)===String(id));if(!e)return;
+  annualEditContext=fromAnnual?(annualEditContext||{scrollY:window.scrollY}):null;
+  $("editModal").dataset.id=e.id;suppressDirty=true;$("editAmount").value=e.amount;ensureSelectOption("editCategory",e.category);$("editCategory").value=e.category;$("editMemo").value=e.memo||"";$("editDate").value=e.date;const type=expenseOriginType(e),rollback=$("rollbackOrigin");if(type==="planned"){rollback.textContent="予定支出に戻す";rollback.classList.remove("hidden");}else if(type==="fixed"){rollback.textContent="固定費を未払いに戻す";rollback.classList.remove("hidden");}else rollback.classList.add("hidden");suppressDirty=false;clearDirty("expense-edit");$("editModal").classList.remove("hidden");}
+function closeEdit(){
+  const context=annualEditContext;annualEditContext=null;
+  clearDirty("expense-edit");$("editModal").classList.add("hidden");
+  if(context)requestAnimationFrame(()=>{if(activePage==="annual")window.scrollTo({top:context.scrollY,behavior:"auto"});});
+  return context;
+}
+async function saveExpenseEdit(){const e=state.expenses.find(x=>String(x.id)===String($("editModal").dataset.id));if(!e)return;const amount=validateAmount($("editAmount").value),date=$("editDate").value;if(!amount)return appAlert("金額を入力してください。");if(!isValidDateString(date)||!dateAllowed(date))return appAlert("日付を確認してください。");const sourceMonth=monthOfDate(e.date),dest=monthOfDate(date);if(!(await confirmCrossMonth(sourceMonth,dest,"支出")))return;e.amount=amount;e.category=$("editCategory").value;e.memo=$("editMemo").value.trim();if(e.date!==date)e.order=nextOrderForDate(state.expenses,date);e.date=date;rememberSessionDate("expense",date);save();const annualContext=closeEdit();if(annualContext){renderAll();return;}if(dest!==selectedMonth){switchMonth(dest,{force:true});return;}renderAll();}
 function requestExpenseDelete(){const e=state.expenses.find(x=>String(x.id)===String($("editModal").dataset.id));if(!e)return;const type=expenseOriginType(e);if(type==="fixed")return appAlert("この支出は固定費から作成されています。固定費を未払いに戻してください。");if(type==="planned")return appAlert("この支出は予定支出から作成されています。予定支出に戻してください。");showDeleteConfirm("expense",e);}
 
 function openPlannedEdit(id){const p=getPlannedSource(id);if(!p||p.status==="confirmed")return;$("plannedEditModal").dataset.id=p.id;suppressDirty=true;$("plannedEditAmount").value=p.amount;ensureSelectOption("plannedEditCategory",p.category);$("plannedEditCategory").value=p.category;$("plannedEditMemo").value=p.memo||"";$("plannedEditDate").value=p.date;suppressDirty=false;clearDirty("planned-edit");$("plannedEditModal").classList.remove("hidden");}
@@ -557,7 +565,7 @@ function bindEvents(){
   document.querySelectorAll("[data-entry-tab]").forEach(tab=>tab.addEventListener("click",()=>{const k=tab.dataset.entryTab;document.querySelectorAll("[data-entry-tab]").forEach(t=>{const a=t===tab;t.classList.toggle("active",a);t.setAttribute("aria-selected",a?"true":"false");});document.querySelectorAll("[data-entry-panel]").forEach(p=>p.classList.toggle("active",p.dataset.entryPanel===k));}));
   $("addExpense").onclick=addExpense;$("addPlannedExpense").onclick=addPlanned;$("addFixedExpense").onclick=addFixed;
   $("expenseList").addEventListener("click",e=>{const b=e.target.closest("[data-edit]");if(b)openEdit(b.dataset.edit);});$("plannedList").addEventListener("click",e=>{const c=e.target.closest("[data-confirm-planned]"),ed=e.target.closest("[data-edit-planned]");if(c)return confirmPlanned(c.dataset.confirmPlanned);if(ed)openPlannedEdit(ed.dataset.editPlanned);});$("fixedList").addEventListener("click",e=>{const c=e.target.closest("[data-confirm-fixed]"),u=e.target.closest("[data-unpay-fixed]"),ed=e.target.closest("[data-edit-fixed]");if(c)return confirmFixed(c.dataset.confirmFixed);if(u)return unpayFixed(u.dataset.unpayFixed);if(ed)openFixedEdit(ed.dataset.editFixed);});
-  $("closeModal").onclick=closeEdit;$("cancelEdit").onclick=closeEdit;$("saveEdit").onclick=saveExpenseEdit;$("deleteEditExpense").onclick=requestExpenseDelete;$("rollbackOrigin").onclick=()=>{const e=state.expenses.find(x=>String(x.id)===String($("editModal").dataset.id));if(!e)return;const t=expenseOriginType(e);if(t==="planned")rollbackPlannedExpense(e);if(t==="fixed")rollbackFixedExpense(e);};$("moveEditUp").onclick=()=>moveWithinSameDate(state.expenses,$("editModal").dataset.id,"up",renderExpenses,openEdit);$("moveEditDown").onclick=()=>moveWithinSameDate(state.expenses,$("editModal").dataset.id,"down",renderExpenses,openEdit);
+  $("closeModal").onclick=closeEdit;$("cancelEdit").onclick=closeEdit;$("saveEdit").onclick=saveExpenseEdit;$("deleteEditExpense").onclick=requestExpenseDelete;$("rollbackOrigin").onclick=()=>{const e=state.expenses.find(x=>String(x.id)===String($("editModal").dataset.id));if(!e)return;const t=expenseOriginType(e);if(t==="planned")rollbackPlannedExpense(e);if(t==="fixed")rollbackFixedExpense(e);};$("moveEditUp").onclick=()=>moveWithinSameDate(state.expenses,$("editModal").dataset.id,"up",renderAll,id=>openEdit(id,Boolean(annualEditContext)));$("moveEditDown").onclick=()=>moveWithinSameDate(state.expenses,$("editModal").dataset.id,"down",renderAll,id=>openEdit(id,Boolean(annualEditContext)));
   $("closePlannedModal").onclick=closePlannedEdit;$("cancelPlannedEdit").onclick=closePlannedEdit;$("savePlannedEdit").onclick=savePlannedEdit;$("deletePlannedEditExpense").onclick=requestPlannedDelete;$("movePlannedEditUp").onclick=()=>moveWithinSameDate(state.plannedExpenses,$("plannedEditModal").dataset.id,"up",renderPlannedExpenses,openPlannedEdit);$("movePlannedEditDown").onclick=()=>moveWithinSameDate(state.plannedExpenses,$("plannedEditModal").dataset.id,"down",renderPlannedExpenses,openPlannedEdit);
   $("closeFixedModal").onclick=closeFixedEdit;$("cancelFixedEdit").onclick=closeFixedEdit;$("saveFixedEdit").onclick=saveFixedEdit;$("deleteFixedFromMonth").onclick=deleteFixedFromMonth;$("deleteFixedCompletely").onclick=deleteFixedCompletely;$("moveFixedEditUp").onclick=()=>moveFixedWithinDue($("fixedEditModal").dataset.id,"up");$("moveFixedEditDown").onclick=()=>moveFixedWithinDue($("fixedEditModal").dataset.id,"down");
   ["editModal","plannedEditModal","fixedEditModal"].forEach(id=>$(id).addEventListener("click",e=>{if(e.target===$(id)){if(id==="editModal")closeEdit();if(id==="plannedEditModal")closePlannedEdit();if(id==="fixedEditModal")closeFixedEdit();}}));
@@ -700,6 +708,53 @@ function annualReportData(year,expenses){
   months.forEach(m=>m.items.sort((a,b)=>a.date.localeCompare(b.date)||(Number(a.order)||0)-(Number(b.order)||0)));
   return {months,total:months.reduce((s,m)=>s+m.total,0),categories:[...categories].map(([name,total])=>({name,total})).sort((a,b)=>b.total-a.total||a.name.localeCompare(b.name,"ja"))};
 }
+// Search conditions and result membership live only in this page session.
+let annualSearch={memo:"",category:""};
+let annualSearchSnapshot=null;
+function annualSearchActive(){return Boolean(annualSearch.memo||annualSearch.category);}
+function resetAnnualMonthFolds(){
+  for(const key of annualFoldState.keys())if(validMonthKey(key))annualFoldState.delete(key);
+}
+function applyAnnualSearch(){
+  if(!annualSearchActive()){annualSearchSnapshot=null;return;}
+  const report=annualReportData(annualYear,state.expenses);
+  annualSearchSnapshot={year:annualYear,months:report.months.map(m=>({month:m.month,ids:m.items.filter(e=>
+    (!annualSearch.memo||String(e.memo||"").includes(annualSearch.memo))&&
+    (!annualSearch.category||String(e.category||"未設定")===annualSearch.category)
+  ).map(e=>String(e.id))}))};
+}
+function annualDetailMonths(report){
+  if(!annualSearchActive())return report.months;
+  if(!annualSearchSnapshot||annualSearchSnapshot.year!==annualYear)applyAnnualSearch();
+  const byId=new Map(state.expenses.map(e=>[String(e.id),e]));
+  // Keep result rows in their original month until the next explicit search.
+  // Values remain live; deleted or rolled-back expenses must not remain as ghosts.
+  return annualSearchSnapshot.months.map(m=>{
+    const items=m.ids.map(id=>byId.get(id)).filter(Boolean).sort((a,b)=>a.date.localeCompare(b.date)||(Number(a.order)||0)-(Number(b.order)||0));
+    return {month:m.month,items,total:items.reduce((sum,e)=>sum+Number(e.amount||0),0)};
+  }).filter(m=>m.items.length);
+}
+function annualMonthlyAverage(year,expenses,today=new Date()){
+  const currentYear=today.getFullYear();
+  if(year>currentYear)return null;
+  const end=year===currentYear?today.getMonth()+1:12;
+  const eligible=annualReportData(year,expenses).months.filter(m=>m.month<=end);
+  const first=eligible.find(m=>m.items.length);
+  if(!first)return null;
+  const count=end-first.month+1,total=eligible.reduce((sum,m)=>sum+m.total,0);
+  return {value:total/count,start:first.month,end,count};
+}
+function refreshAnnualCategoryOptions(){
+  const select=$("annualSearchCategory"),value=select.value;
+  const names=[...new Set([...CATEGORIES,...state.expenses.map(e=>String(e.category||"未設定")),...(value?[value]:[])])];
+  select.innerHTML='<option value="">すべて</option>'+names.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
+  select.value=value;
+}
+function setAllAnnualMonthsOpen(open){
+  $("annualDetails").querySelectorAll("details[data-annual-fold]").forEach(el=>{
+    annualFoldState.set(el.dataset.annualFold,open);el.open=open;
+  });
+}
 function renderAnnualReport(){
   if(!state)return;
   const report=annualReportData(annualYear,state.expenses);
@@ -707,21 +762,44 @@ function renderAnnualReport(){
   setText("annualCategoryTitle",`${annualYear}年 カテゴリ別支出`);
   $("annualPrevYear").disabled=annualYear<=1000;$("annualNextYear").disabled=annualYear>=9999;
   setText("annualTotal",yen(report.total));
+  const average=annualMonthlyAverage(annualYear,state.expenses);
+  setText("annualAverage",average?yen(average.value):"—");
+  setText("annualAveragePeriod",average?`（${average.start}〜${average.end}月・${average.count}か月）`:"");
+  refreshAnnualCategoryOptions();
   setText("annualMonthValue","棒を押すと月の金額を確認できます。");
   const max=Math.max(0,...report.months.map(m=>m.total));
   const scale=niceChartScale(max);
   $("annualMonthlyChart").innerHTML=`<p class="entry-hint">${annualYear}年・1〜12月</p><div class="annual-month-chart"><div class="annual-axis" aria-hidden="true"><span>${yen(scale.max)}</span><span>${yen(scale.max/2)}</span><span>¥0</span></div><div class="annual-month-columns">${report.months.map(m=>`<button type="button" class="annual-month-column" data-annual-month="${m.month}" aria-label="${m.month}月 ${yen(m.total)}"><span class="annual-bar-space"><span class="annual-bar" style="height:${scale.max?m.total/scale.max*100:0}%"></span></span><span class="annual-month-label">${m.month}</span></button>`).join("")}</div></div>${!max?'<p class="muted">この年の支出はありません。</p>':''}`;
   const catMax=Math.max(0,...report.categories.map(c=>c.total));
   $("annualCategoryChart").innerHTML=report.categories.length?report.categories.map(c=>`<div class="annual-category-row"><span>${escapeHtml(c.name)}</span><strong>${yen(c.total)}</strong><div class="annual-category-bar" style="width:${catMax?c.total/catMax*100:0}%" aria-hidden="true"></div></div>`).join(""):'<p class="muted">この年の支出はありません。</p>';
-  $("annualDetails").innerHTML=report.months.map(m=>{
+  const detailMonths=annualDetailMonths(report),searching=annualSearchActive();
+  const count=detailMonths.reduce((sum,m)=>sum+m.items.length,0);
+  setHidden("annualSearchSummary",!searching);
+  setText("annualSearchSummary",`該当${count}件　合計 ${yen(detailMonths.reduce((sum,m)=>sum+m.total,0))}`);
+  $("annualOpenAll").disabled=$("annualCloseAll").disabled=!count;
+  $("annualDetails").innerHTML=searching&&!count?'<p class="card muted">該当する支出はありません</p>':detailMonths.map(m=>{
     const key=`${annualYear}-${pad2(m.month)}`,open=annualFoldState.get(key)!==false;
-    const rows=m.items.map(e=>`<tr><td>${escapeHtml(formatExpenseDate(e.date))}</td><td class="memo-cell" data-memo="${escapeHtml(e.memo||'')}">${escapeHtml(e.memo||'—')}</td><td>${escapeHtml(e.category||'未設定')}</td><td class="amount-col">${yen(e.amount)}</td></tr>`).join("");
     if(!m.items.length)return `<div class="card annual-empty-month"><span>${annualYear}年${m.month}月</span><span class="annual-empty-note">支出がありません</span><strong>¥0</strong></div>`;
-    return `<details class="card annual-disclosure" data-annual-fold="${key}" ${open?'open':''}><summary><span>${annualYear}年${m.month}月</span><strong class="annual-month-total">${yen(m.total)}</strong></summary>${`<table class="annual-table"><caption class="visually-hidden">${annualYear}年${m.month}月の支出明細</caption><thead><tr><th scope="col">日付</th><th scope="col">メモ</th><th scope="col">カテゴリ</th><th scope="col" class="amount-col">金額</th></tr></thead><tbody>${rows}</tbody></table>`}</details>`;
+    const table=tableHtml(m.items.map(e=>rowHtml(e,"expense")));
+    return `<details class="card annual-disclosure" data-annual-fold="${key}" ${open?'open':''}><summary><span>${annualYear}年${m.month}月</span><strong class="annual-month-total">${yen(m.total)}</strong></summary><div class="expense-table-wrap">${table}</div></details>`;
   }).join("");
 }
+
 function bindAnnualReport(){
-  const changeYear=value=>{const n=Number(value);if(!Number.isInteger(n)||n<1000||n>9999)return;annualYear=n;renderAnnualReport();};
+  $("annualSearchForm").onsubmit=e=>{
+    e.preventDefault();
+    annualSearch={memo:$("annualSearchMemo").value.trim(),category:$("annualSearchCategory").value};
+    applyAnnualSearch();resetAnnualMonthFolds();renderAnnualReport();
+  };
+  $("annualClearSearch").onclick=()=>{
+    annualSearch={memo:"",category:""};annualSearchSnapshot=null;
+    $("annualSearchMemo").value="";$("annualSearchCategory").value="";
+    resetAnnualMonthFolds();renderAnnualReport();
+  };
+  $("annualOpenAll").onclick=()=>setAllAnnualMonthsOpen(true);
+  $("annualCloseAll").onclick=()=>setAllAnnualMonthsOpen(false);
+  $("annualDetails").onclick=e=>{const button=e.target.closest("[data-edit]");if(button)openEdit(button.dataset.edit,true);};
+  const changeYear=value=>{const n=Number(value);if(!Number.isInteger(n)||n<1000||n>9999)return;annualYear=n;applyAnnualSearch();resetAnnualMonthFolds();renderAnnualReport();};
   $("annualPrevYear").onclick=()=>changeYear(annualYear-1);
   $("annualNextYear").onclick=()=>changeYear(annualYear+1);
   $("annualYear").onclick=openYearWheel;
@@ -734,7 +812,7 @@ function bindAnnualReport(){
   $("yearWheel").onclick=e=>{const row=e.target.closest("[data-wheel-year]");if(row)$("yearWheel").scrollTo({top:(Number(row.dataset.wheelYear)-wheelStartYear)*44,behavior:"smooth"});};
   $("yearWheel").onkeydown=e=>{const delta={ArrowUp:-1,ArrowDown:1,PageUp:-10,PageDown:10}[e.key];if(delta!==undefined){e.preventDefault();positionYearWheel(Math.max(1000,Math.min(9999,wheelSelectedYear()+delta)));}};
   $("annualMonthlyChart").onclick=e=>{const b=e.target.closest("[data-annual-month]");if(b)setText("annualMonthValue",`${annualYear}年${b.dataset.annualMonth}月：${b.getAttribute("aria-label").split(" ").slice(1).join(" ")}`);};
-  document.querySelector('[data-app-page="annual"]').addEventListener("toggle",e=>{if(e.target.matches("details[data-annual-fold]"))annualFoldState.set(e.target.dataset.annualFold,e.target.open);},true);
+  document.querySelector('[data-app-page="annual"]').addEventListener("toggle",e=>{if(e.target.isConnected&&e.target.matches("details[data-annual-fold]"))annualFoldState.set(e.target.dataset.annualFold,e.target.open);},true);
 }
 
 let wheelStartYear=0;
@@ -762,5 +840,6 @@ function closeYearWheel(){
 }
 
 bootstrap();
+
 
 
