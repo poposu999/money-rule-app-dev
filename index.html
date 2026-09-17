@@ -8,12 +8,12 @@
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)"/>
 <meta name="theme-color" content="#111418" media="(prefers-color-scheme: dark)"/>
 <link rel="manifest" href="manifest.json"/>
-<link href="style.css?v=49.01" rel="stylesheet"/>
+<link href="style.css?v=49.02" rel="stylesheet"/>
 </head>
 <body>
 <div class="dev-environment-banner" role="status">検証環境</div>
 <main class="container" id="appRoot">
-  <header class="app-header"><h1>家計簿 <span class="header-version">ver.49.01</span></h1><button id="openAppMenu" class="secondary-btn menu-toggle" type="button" aria-label="メニューを開く" aria-expanded="false" aria-controls="appMenu">☰</button></header>
+  <header class="app-header"><h1>家計簿 <span class="header-version">ver.49.02</span></h1><button id="openAppMenu" class="secondary-btn menu-toggle" type="button" aria-label="メニューを開く" aria-expanded="false" aria-controls="appMenu">☰</button></header>
   <div id="appMenuOverlay" class="menu-overlay hidden">
     <nav id="appMenu" class="app-menu" aria-label="メインメニュー">
       <div class="modal-header"><h2>メニュー</h2><button id="closeAppMenu" class="close-btn" type="button" aria-label="メニューを閉じる">×</button></div>
@@ -113,7 +113,17 @@
   </section>
 </div>
 
-  <section class="card hidden" data-app-page="annual" aria-labelledby="annualPageTitle"><h2 id="annualPageTitle" tabindex="-1">年間レポート</h2><p class="muted">年間レポートは準備中です。</p><button type="button" class="secondary-btn" data-page-link="home">ホームへ戻る</button></section>
+  <div class="hidden" data-app-page="annual">
+    <section class="card annual-heading">
+      <h2 id="annualPageTitle" tabindex="-1">年間レポート</h2>
+      <div class="annual-year-nav"><button id="annualPrevYear" class="secondary-btn" type="button" aria-label="前年">◀</button><label>対象年<input id="annualYear" type="number" min="1000" max="9999" step="1" inputmode="numeric" /></label><button id="annualNextYear" class="secondary-btn" type="button" aria-label="翌年">▶</button></div>
+      <p class="entry-hint">確定済みの実支出を集計しています。</p>
+      <div class="annual-total"><span>年間支出合計</span><strong id="annualTotal">¥0</strong></div>
+    </section>
+    <details class="card annual-disclosure" data-annual-fold="monthly-chart" open><summary>月別支出グラフ</summary><div id="annualMonthlyChart"></div><p id="annualMonthValue" class="annual-chart-value" role="status">棒を押すと月の金額を確認できます。</p></details>
+    <details class="card annual-disclosure" data-annual-fold="category-chart" open><summary>年間カテゴリ別支出</summary><div id="annualCategoryChart"></div></details>
+    <section aria-label="1年分の支出明細"><h2 class="annual-details-title">1〜12月の支出明細</h2><div id="annualDetails"></div></section>
+  </div>
   <section class="card hidden" data-app-page="rules" aria-labelledby="rulesPageTitle"><h2 id="rulesPageTitle" tabindex="-1">収入・家計ルール</h2><p class="muted">年間一覧は準備中です。収入・家計ルールは、ホームの下部で引き続き入力できます。</p><button id="goToIncome" type="button" class="secondary-btn">ホームで入力する</button></section>
   <div class="hidden" data-app-page="data">  <section class="card" data-section-content="data-tools">
     <div class="section-title"><h2>データ管理</h2><button class="minus-btn" data-section="data-tools">−</button></div>
@@ -235,9 +245,9 @@
   </div></div>
 
   <div id="memoPopup" class="memo-popup hidden" role="status"></div>
-  <footer class="app-footer"><h1>家計簿 <span class="app-version">ver.49.01</span></h1><p>画面分割・記録画面の検証版</p></footer>
+  <footer class="app-footer"><h1>家計簿 <span class="app-version">ver.49.02</span></h1><p>画面分割・記録画面の検証版</p></footer>
 </main>
-<script src="app.js?v=49.01"></script>
+<script src="app.js?v=49.02"></script>
 <script>
 if ("serviceWorker" in navigator) {
   let reloading = false;
