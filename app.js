@@ -1,4 +1,4 @@
-const VERSION="49.09";
+const VERSION="49.10";
 const SCHEMA_VERSION=49;
 const PROD_STORAGE_KEYS={state:"moneyRuleAppV2",sections:"moneyRuleSectionPrefs",stats:"moneyRuleStatPrefs"};
 const LEGACY_STORAGE_KEYS={state:"moneyRuleDevAppV2",sections:"moneyRuleDevSectionPrefs",stats:"moneyRuleDevStatPrefs"};
@@ -438,9 +438,9 @@ function renderFixedExpenses(){
   if(!entries.length){$("fixedList").innerHTML='<div class="muted expense-empty">この月に有効な固定費はありません。</div>';return;}
   const rows=entries.map(({fixed,config,date,paid,skipped})=>{
     const paymentAction=paid
-      ?`<button type="button" class="fixed-paid" data-unpay-fixed="${escapeHtml(fixed.id)}">支払済み</button>`
+      ?`<button type="button" class="fixed-status-label" data-unpay-fixed="${escapeHtml(fixed.id)}">支払済み</button>`
       :skipped
-        ?'<small class="fixed-skip-status">支払いなし</small>'
+        ?'<small class="fixed-status-label">支払いなし</small>'
         :`<button type="button" class="confirm-btn" data-confirm-fixed="${escapeHtml(fixed.id)}" ${config.due?"":"disabled"}>支出に確定</button>`;
     const memoHtml=config.memo?escapeHtml(config.memo):'<span class="muted">—</span>',reviewBadge=fixed.needsReview?' <small>要確認</small>':'',amountClass=skipped?'amount-col fixed-skip-amount':'amount-col';
     return `<tr><td>${escapeHtml(formatExpenseDate(date))}</td><td class="memo-cell" data-memo="${escapeHtml(config.memo||'')}">${memoHtml}</td><td>${escapeHtml(config.category||'未設定')}${reviewBadge}</td><td class="${amountClass}"><strong>${yen(config.amount)}</strong></td><td class="action-col"><div class="table-actions">${paymentAction}<button type="button" class="edit-btn" data-edit-fixed="${escapeHtml(fixed.id)}">編集</button></div></td></tr>`;
