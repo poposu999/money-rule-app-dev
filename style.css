@@ -227,7 +227,14 @@ input[type="date"]::-webkit-datetime-edit-fields-wrapper{
 @media(max-width:420px){.annual-search-fields{grid-template-columns:1fr;gap:10px}}
 @media(prefers-color-scheme:dark){.annual-average{color:#a5adb8}.annual-average strong{color:#e5e7eb}}
 
-/* ver.49.05: income and monthly household rules */
+/* ver.49.06: fixed expense monthly payment skip */
+.fixed-skip-setting{margin-top:14px;padding-top:14px;border-top:1px solid #edf0f2}
+.fixed-skip-setting h3{margin:0 0 8px;font-size:.94rem}
+.fixed-skip-setting .entry-hint{margin:8px 0 0}
+.fixed-skip-setting #toggleFixedSkip.active{background:#f5f6f7;border-color:#8c969f}
+.fixed-skip-badge{display:inline-block;margin-left:5px;padding:2px 6px;border:1px solid #aab2b9;border-radius:999px;color:#59636c;font-size:.72rem;font-weight:600;line-height:1.2;vertical-align:middle;white-space:nowrap}
+.fixed-skip-amount{opacity:.52}
+@media(prefers-color-scheme:dark){.fixed-skip-setting{border-color:#303640}.fixed-skip-setting #toggleFixedSkip.active{background:#303640;border-color:#657080}.fixed-skip-badge{border-color:#657080;color:#c5ccd5}}
 .settings-year-section h2{font-size:18px;margin:0 0 12px}.settings-year-section>.entry-hint{line-height:1.6;margin:0 0 14px}
 .income-year-total{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:12px 0 16px;font-size:13px}.income-year-total strong{font-size:23px;overflow-wrap:anywhere}
 .month-setting-list{border-top:1px solid #e2e5e9}.month-setting-row{display:grid;grid-template-columns:48px minmax(0,1fr);align-items:center;gap:12px;width:100%;padding:14px 8px;border:0;border-bottom:1px solid #e2e5e9;border-radius:0;background:transparent;color:inherit;text-align:left;min-height:70px}
