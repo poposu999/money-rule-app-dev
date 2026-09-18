@@ -246,3 +246,6 @@ input[type="date"]::-webkit-datetime-edit-fields-wrapper{
 .rule-change-details{padding:10px 12px;border-radius:9px;background:#f2f4f6;margin-bottom:14px}.rule-change-detail{display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px 12px;font-size:12px;line-height:1.8}.rule-change-detail strong{font-weight:600}
 @media(max-width:360px){.month-setting-row{grid-template-columns:38px minmax(0,1fr);gap:8px;padding:12px 4px}.settings-editor-dialog{padding:15px}.settings-editor-dialog .modal-header h2{font-size:15px}.rule-percent-fields{grid-template-columns:1fr;gap:0}}
 @media(prefers-color-scheme:dark){.month-setting-list,.month-setting-row{border-color:#303640}.current-setting-month,.rule-change-details{background:#242a32}.month-value>span,.rule-allocation{color:#a5adb8}.rule-change-badge{background:#303640;color:#c5ccd5}.settings-editor-dialog{background:#181c21;color:#e5e7eb;border-color:#303640}}
+
+/* Status labels keep the shared compact button dimensions, without an action. */
+.table-actions .fixed-status-label:disabled{opacity:1;cursor:default}

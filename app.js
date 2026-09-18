@@ -1,4 +1,4 @@
-const VERSION="49.11";
+const VERSION="49.12";
 const SCHEMA_VERSION=49;
 const PROD_STORAGE_KEYS={state:"moneyRuleAppV2",sections:"moneyRuleSectionPrefs",stats:"moneyRuleStatPrefs"};
 const LEGACY_STORAGE_KEYS={state:"moneyRuleDevAppV2",sections:"moneyRuleDevSectionPrefs",stats:"moneyRuleDevStatPrefs"};
@@ -363,7 +363,7 @@ function loadMonthForms(){
   suppressDirty=false;clearAllDirty();
 }
 function resetEntryTab(){document.querySelectorAll("[data-entry-tab]").forEach(t=>{const active=t.dataset.entryTab==="expense";t.classList.toggle("active",active);t.setAttribute("aria-selected",active?"true":"false");});document.querySelectorAll("[data-entry-panel]").forEach(p=>p.classList.toggle("active",p.dataset.entryPanel==="expense"));}
-function closeAllEditModals(){["editModal","plannedEditModal","fixedEditModal","deleteConfirmModal"].forEach(id=>$(id)?.classList.add("hidden"));pendingDelete=null;}
+function closeAllEditModals(){plannedEditDraft=null;fixedEditDraft=null;["editModal","plannedEditModal","fixedEditModal","deleteConfirmModal"].forEach(id=>$(id)?.classList.add("hidden"));pendingDelete=null;}
 async function switchMonth(next,{force=false}={}){
   if(!monthWithinAllowedRange(next))return;
   if(!force&&!(await confirmDiscardUnsaved()))return;
@@ -438,9 +438,9 @@ function renderFixedExpenses(){
   if(!entries.length){$("fixedList").innerHTML='<div class="muted expense-empty">この月に有効な固定費はありません。</div>';return;}
   const rows=entries.map(({fixed,config,date,paid,skipped})=>{
     const paymentAction=paid
-      ?`<button type="button" class="fixed-status-label" data-unpay-fixed="${escapeHtml(fixed.id)}">支払済み</button>`
+      ?`<button type="button" class="fixed-status-label" disabled>支払済み</button>`
       :skipped
-        ?'<button type="button" class="fixed-status-label" tabindex="-1" aria-label="支払いなし">支払いなし</button>'
+        ?'<button type="button" class="fixed-status-label" disabled>支払いなし</button>'
         :`<button type="button" class="confirm-btn" data-confirm-fixed="${escapeHtml(fixed.id)}" ${config.due?"":"disabled"}>支出に確定</button>`;
     const memoHtml=config.memo?escapeHtml(config.memo):'<span class="muted">—</span>',reviewBadge=fixed.needsReview?' <small>要確認</small>':'',amountClass=skipped?'amount-col fixed-skip-amount':'amount-col';
     return `<tr><td>${escapeHtml(formatExpenseDate(date))}</td><td class="memo-cell" data-memo="${escapeHtml(config.memo||'')}">${memoHtml}</td><td>${escapeHtml(config.category||'未設定')}${reviewBadge}</td><td class="${amountClass}"><strong>${yen(config.amount)}</strong></td><td class="action-col"><div class="table-actions">${paymentAction}<button type="button" class="edit-btn" data-edit-fixed="${escapeHtml(fixed.id)}">編集</button></div></td></tr>`;
@@ -501,47 +501,157 @@ function closeEdit(){
 async function saveExpenseEdit(){const e=state.expenses.find(x=>String(x.id)===String($("editModal").dataset.id));if(!e)return;const amount=validateAmount($("editAmount").value),date=$("editDate").value;if(!amount)return appAlert("金額を入力してください。");if(!isValidDateString(date)||!dateAllowed(date))return appAlert("日付を確認してください。");const sourceMonth=monthOfDate(e.date),dest=monthOfDate(date);if(!(await confirmCrossMonth(sourceMonth,dest,"支出")))return;e.amount=amount;e.category=$("editCategory").value;e.memo=$("editMemo").value.trim();if(e.date!==date)e.order=nextOrderForDate(state.expenses,date);e.date=date;rememberSessionDate("expense",date);save();const annualContext=closeEdit();if(annualContext){renderAll();return;}if(dest!==selectedMonth){switchMonth(dest,{force:true});return;}renderAll();}
 function requestExpenseDelete(){const e=state.expenses.find(x=>String(x.id)===String($("editModal").dataset.id));if(!e)return;const type=expenseOriginType(e);if(type==="fixed")return appAlert("この支出は固定費から作成されています。固定費を未払いに戻してください。");if(type==="planned")return appAlert("この支出は予定支出から作成されています。予定支出に戻してください。");showDeleteConfirm("expense",e);}
 
-function openPlannedEdit(id){const p=getPlannedSource(id);if(!p||p.status==="confirmed")return;$("plannedEditModal").dataset.id=p.id;suppressDirty=true;$("plannedEditAmount").value=p.amount;ensureSelectOption("plannedEditCategory",p.category);$("plannedEditCategory").value=p.category;$("plannedEditMemo").value=p.memo||"";$("plannedEditDate").value=p.date;suppressDirty=false;clearDirty("planned-edit");$("plannedEditModal").classList.remove("hidden");}
-function closePlannedEdit(){clearDirty("planned-edit");$("plannedEditModal").classList.add("hidden");}
-async function confirmPlannedFromEdit(){const id=$("plannedEditModal").dataset.id;if(await confirmPlanned(id))closePlannedEdit();}
-async function savePlannedEdit(){const p=getPlannedSource($("plannedEditModal").dataset.id);if(!p)return;const amount=validateAmount($("plannedEditAmount").value),date=$("plannedEditDate").value;if(!amount)return appAlert("金額を入力してください。");if(!isValidDateString(date)||!dateAllowed(date))return appAlert("予定日を確認してください。");const source=monthOfDate(p.date),dest=monthOfDate(date);if(!(await confirmCrossMonth(source,dest,"予定支出")))return;p.amount=amount;p.category=$("plannedEditCategory").value;p.memo=$("plannedEditMemo").value.trim();if(p.date!==date)p.order=nextOrderForDate(state.plannedExpenses,date);p.date=date;rememberSessionDate("planned",date);save();closePlannedEdit();if(dest!==selectedMonth){switchMonth(dest,{force:true});return;}renderAll();}
+// Editor drafts never mutate saved records before Save.
+let plannedEditDraft=null,fixedEditDraft=null;
+function renderPlannedPaymentControl(){
+  const paid=plannedEditDraft?.payment==="paid";
+  setText("plannedPaymentStatus",paid?"支払済み":"未払い");
+  setText("confirmPlannedFromEdit",paid?"未払いに戻す":"支払済みにする");
+}
+function openPlannedEdit(id){
+  const p=getPlannedSource(id);if(!p||p.status==="confirmed")return;
+  plannedEditDraft={id:p.id,payment:"unpaid",orders:{},saving:false};
+  $("plannedEditModal").dataset.id=p.id;suppressDirty=true;
+  $("plannedEditAmount").value=p.amount;ensureSelectOption("plannedEditCategory",p.category);
+  $("plannedEditCategory").value=p.category;$("plannedEditMemo").value=p.memo||"";$("plannedEditDate").value=p.date;
+  renderPlannedPaymentControl();suppressDirty=false;clearDirty("planned-edit");$("plannedEditModal").classList.remove("hidden");
+}
+function closePlannedEdit(){plannedEditDraft=null;clearDirty("planned-edit");$("plannedEditModal").classList.add("hidden");}
+function confirmPlannedFromEdit(){
+  if(!plannedEditDraft||plannedEditDraft.saving)return;
+  plannedEditDraft.payment=plannedEditDraft.payment==="paid"?"unpaid":"paid";
+  markDirty("planned-edit");renderPlannedPaymentControl();
+}
+async function savePlannedEdit(){
+  const draft=plannedEditDraft,p=getPlannedSource(draft?.id);if(!draft||draft.saving||!p||p.status==="confirmed")return;
+  draft.saving=true;
+  try{
+    const amount=validateAmount($("plannedEditAmount").value),date=$("plannedEditDate").value,
+      category=$("plannedEditCategory").value,memo=$("plannedEditMemo").value.trim();
+    if(!amount)return appAlert("金額を入力してください。");
+    if(!isValidDateString(date)||!dateAllowed(date))return appAlert("予定日を確認してください。");
+    const source=monthOfDate(p.date),dest=monthOfDate(date);
+    if(!(await confirmCrossMonth(source,dest,"予定支出"))||plannedEditDraft!==draft)return;
+    applyDraftOrders(state.plannedExpenses,draft.orders);
+    p.amount=amount;p.category=category;p.memo=memo;
+    if(p.date!==date)p.order=nextOrderForDate(state.plannedExpenses,date);p.date=date;
+    if(draft.payment==="paid"){
+      const e={id:newId("e"),amount,category,memo,date,order:nextOrderForDate(state.expenses,date),
+        origin:{type:"planned",sourceId:p.id,sourceMonth:dest,snapshot:{amount,category,memo,date}}};
+      state.expenses.push(e);p.status="confirmed";p.confirmedExpenseId=e.id;
+    }
+    rememberSessionDate("planned",date);save();closePlannedEdit();
+    if(dest!==selectedMonth){switchMonth(dest,{force:true});return;}renderAll();
+  }finally{draft.saving=false;}
+}
 function requestPlannedDelete(){const p=getPlannedSource($("plannedEditModal").dataset.id);if(p)showDeleteConfirm("planned",p);}
 
 function ensureSelectOption(id,value){const el=$(id);if(!el||!value)return;if(![...el.options].some(o=>o.value===value)){const o=document.createElement("option");o.value=value;o.textContent=value;el.appendChild(o);}}
-function renderFixedPaymentControl(f){
-  const paid=fixedIsPaid(f,selectedMonth),skipped=fixedIsSkipped(f,selectedMonth),button=$("fixedPaymentAction");
+function renderFixedPaymentControl(){
+  const payment=fixedEditDraft?.payment,paid=payment==="paid",skipped=payment==="skipped";
   setText("fixedPaymentStatus",paid?"支払済み":skipped?"支払いなし":"未払い");
-  button.textContent=paid?"未払いに戻す":skipped?"支払い対象に戻す":"この月は支払わない";
+  setText("fixedPaymentAction",paid?"未払いに戻す":skipped?"支払い対象に戻す":"この月は支払わない");
   setHidden("confirmFixedFromEdit",paid||skipped);
 }
-async function confirmFixedFromEdit(){const f=getFixedSource($("fixedEditModal").dataset.id);if(!f)return;if(await confirmFixed(f.id))renderFixedPaymentControl(f);}
-async function changeFixedPaymentStatus(){
-  const f=getFixedSource($("fixedEditModal").dataset.id);if(!f)return;
-  if(fixedIsPaid(f,selectedMonth)){
-    if(!await unpayFixed(f.id,selectedMonth))return;
-  }else if(fixedIsSkipped(f,selectedMonth)){
-    delete f.skippedMonths[selectedMonth];save();renderAll();
-  }else{
-    f.skippedMonths[selectedMonth]=true;save();renderAll();
-  }
-  renderFixedPaymentControl(f);
+function confirmFixedFromEdit(){
+  if(!fixedEditDraft||fixedEditDraft.saving)return;
+  fixedEditDraft.payment="paid";markDirty("fixed-edit");renderFixedPaymentControl();
 }
-function openFixedEdit(id){const f=getFixedSource(id),config=configForFixedMonth(f,selectedMonth);if(!f||!config)return;$("fixedEditModal").dataset.id=f.id;suppressDirty=true;$("fixedEditAmount").value=config.amount;ensureSelectOption("fixedEditCategory",config.category||"未設定");$("fixedEditCategory").value=config.category||"未設定";$("fixedEditMemo").value=config.memo||"";$("fixedEditDue").value=dueToValue(config.due);renderFixedPaymentControl(f);suppressDirty=false;clearDirty("fixed-edit");$("fixedEditModal").classList.remove("hidden");}
-function closeFixedEdit(){clearDirty("fixed-edit");$("fixedEditModal").classList.add("hidden");}
+function changeFixedPaymentStatus(){
+  if(!fixedEditDraft||fixedEditDraft.saving)return;
+  fixedEditDraft.payment=fixedEditDraft.payment==="unpaid"?"skipped":"unpaid";
+  markDirty("fixed-edit");renderFixedPaymentControl();
+}
+function openFixedEdit(id){
+  const f=getFixedSource(id),config=configForFixedMonth(f,selectedMonth);if(!f||!config)return;
+  fixedEditDraft={id:f.id,month:selectedMonth,payment:fixedIsPaid(f,selectedMonth)?"paid":fixedIsSkipped(f,selectedMonth)?"skipped":"unpaid",orders:{},saving:false};
+  $("fixedEditModal").dataset.id=f.id;suppressDirty=true;$("fixedEditAmount").value=config.amount;
+  ensureSelectOption("fixedEditCategory",config.category||"未設定");$("fixedEditCategory").value=config.category||"未設定";
+  $("fixedEditMemo").value=config.memo||"";$("fixedEditDue").value=dueToValue(config.due);
+  renderFixedPaymentControl();suppressDirty=false;clearDirty("fixed-edit");$("fixedEditModal").classList.remove("hidden");
+}
+function closeFixedEdit(){fixedEditDraft=null;clearDirty("fixed-edit");$("fixedEditModal").classList.add("hidden");}
 function upsertFixedChange(f,effectiveMonth,config){const changes=f.changes||[];const idx=changes.findIndex(c=>c.effectiveMonth===effectiveMonth),entry={effectiveMonth,amount:config.amount,category:config.category,memo:config.memo,due:clone(config.due)};if(idx>=0)changes[idx]=entry;else changes.push(entry);changes.sort((a,b)=>compareMonth(a.effectiveMonth,b.effectiveMonth));f.changes=changes;}
 async function saveFixedEdit(){
-  const f=getFixedSource($("fixedEditModal").dataset.id),old=configForFixedMonth(f,selectedMonth);if(!f||!old)return;const amount=validateAmount($("fixedEditAmount").value),category=$("fixedEditCategory").value,memo=$("fixedEditMemo").value.trim(),due=valueToDue($("fixedEditDue").value);if(!amount)return appAlert("金額を入力してください。");if(!category)return appAlert("カテゴリを選択してください。");if(!due)return appAlert("支払日を選択してください。");
-  const changed=amount!==old.amount||category!==old.category||memo!==old.memo||JSON.stringify(due)!==JSON.stringify(old.due);let effective=selectedMonth;const dueChanged=JSON.stringify(due)!==JSON.stringify(old.due);if(changed&&isPastSelected()&&dueChanged){if(await appConfirm(`支払日の変更を${monthLabel(selectedMonth)}から反映しますか？\n\nOK：選択月から\nキャンセル：次の確認へ`)){effective=selectedMonth;}else if(await appConfirm("今月から反映しますか？")){effective=currentMonthKey();}else return;}
-  const later=f.changes.some(c=>compareMonth(c.effectiveMonth,effective)>0);if(changed&&later&&!await appConfirm("この固定費には将来の変更予定があります。将来の予定を残したまま、この変更を追加しますか？"))return;
-  if(changed){upsertFixedChange(f,effective,{amount,category,memo,due});f.needsReview=false;}
-  const paid=fixedPaidInfo(f,selectedMonth);if(paid&&effective===selectedMonth){const e=state.expenses.find(x=>String(x.id)===String(paid.expenseId));if(e&&await appConfirm("この月は支払済みです。選択月の確定済み支出にも変更を反映しますか？")){e.amount=amount;e.category=category;e.memo=memo;e.date=fixedDueDate(f,selectedMonth,{amount,category,memo,due});e.origin=e.origin||{type:"fixed",sourceId:f.id,sourceMonth:selectedMonth};e.origin.snapshot={amount:e.amount,category:e.category,memo:e.memo,date:e.date};}}
-  save();closeFixedEdit();renderAll();
+  const draft=fixedEditDraft,f=getFixedSource(draft?.id),month=draft?.month,old=configForFixedMonth(f,month);
+  if(!draft||draft.saving||!f||!old||month!==selectedMonth)return;
+  draft.saving=true;
+  try{
+    const amount=validateAmount($("fixedEditAmount").value),category=$("fixedEditCategory").value,
+      memo=$("fixedEditMemo").value.trim(),due=valueToDue($("fixedEditDue").value);
+    if(!amount)return appAlert("金額を入力してください。");
+    if(!category)return appAlert("カテゴリを選択してください。");
+    if(!due)return appAlert("支払日を選択してください。");
+    const changed=amount!==old.amount||category!==old.category||memo!==old.memo||JSON.stringify(due)!==JSON.stringify(old.due);
+    let effective=month;
+    const dueChanged=JSON.stringify(due)!==JSON.stringify(old.due);
+    if(changed&&isPastSelected()&&dueChanged){
+      if(await appConfirm(`支払日の変更を${monthLabel(month)}から反映しますか？\n\nOK：選択月から\nキャンセル：次の確認へ`)){effective=month;}
+      else if(await appConfirm("今月から反映しますか？")){effective=currentMonthKey();}
+      else return;
+    }
+    const later=f.changes.some(c=>compareMonth(c.effectiveMonth,effective)>0);
+    if(changed&&later&&!await appConfirm("この固定費には将来の変更予定があります。将来の予定を残したまま、この変更を追加しますか？"))return;
+    const paid=fixedPaidInfo(f,month),expense=paid?state.expenses.find(x=>String(x.id)===String(paid.expenseId)):null;
+    let updatePaid=false;
+    if(paid&&draft.payment!=="paid"){
+      const message=expense&&expenseChangedFromSnapshot(expense)
+        ?"手動編集した支出も削除されます。実支出を削除して支払い状態の変更を保存しますか？"
+        :"実支出を削除して支払い状態の変更を保存しますか？";
+      if(!await appConfirm(message))return;
+    }else if(paid&&changed&&effective===month&&expense){
+      updatePaid=await appConfirm("この月は支払済みです。選択月の確定済み支出にも変更を反映しますか？");
+    }
+    if(fixedEditDraft!==draft||selectedMonth!==month)return;
+    // All confirmation prompts precede any mutation.
+    if(changed){upsertFixedChange(f,effective,{amount,category,memo,due});f.needsReview=false;}
+    applyDraftOrders(state.fixedExpenses,draft.orders);
+    f.skippedMonths=f.skippedMonths||{};f.paidMonths=f.paidMonths||{};
+    if(paid&&draft.payment!=="paid"){
+      state.expenses=state.expenses.filter(x=>String(x.id)!==String(paid.expenseId));
+      delete f.paidMonths[month];
+    }
+    if(draft.payment==="skipped")f.skippedMonths[month]=true;
+    else delete f.skippedMonths[month];
+    if(draft.payment==="paid"&&!paid){
+      const date=fixedDueDate(f,month,{amount,category,memo,due});
+      const e={id:newId("e"),amount,category,memo,date,order:nextOrderForDate(state.expenses,date),
+        origin:{type:"fixed",sourceId:f.id,sourceMonth:month,snapshot:{amount,category,memo,date}}};
+      state.expenses.push(e);f.paidMonths[month]={expenseId:e.id,confirmedAt:new Date().toISOString()};
+    }else if(updatePaid){
+      expense.amount=amount;expense.category=category;expense.memo=memo;
+      const date=fixedDueDate(f,month,{amount,category,memo,due});
+      if(expense.date!==date)expense.order=nextOrderForDate(state.expenses,date);expense.date=date;
+      expense.origin=expense.origin||{type:"fixed",sourceId:f.id,sourceMonth:month};
+      expense.origin.snapshot={amount,category,memo,date};
+    }
+    save();closeFixedEdit();renderAll();
+  }finally{draft.saving=false;}
 }
 async function deleteFixedFromMonth(){const f=getFixedSource($("fixedEditModal").dataset.id);if(!f)return;if(!await appConfirm(`${monthLabel(selectedMonth)}以降の固定費設定を削除します。\n確定済みの実支出は削除されません。続行しますか？`))return;f.endMonth=selectedMonth;f.changes=(f.changes||[]).filter(c=>compareMonth(c.effectiveMonth,selectedMonth)<0);save();closeFixedEdit();renderAll();}
 async function deleteFixedCompletely(){const f=getFixedSource($("fixedEditModal").dataset.id);if(!f)return;if(!await appConfirm("この固定費を完全削除します。\n\nすべての固定費設定・変更履歴が削除されます。\n確定済みの実支出は通常の支出として残ります。続行しますか？"))return;state.expenses.forEach(e=>{if(e.origin?.type==="fixed"&&String(e.origin.sourceId)===String(f.id))e.origin=null;});state.fixedExpenses=state.fixedExpenses.filter(x=>String(x.id)!==String(f.id));save();closeFixedEdit();renderAll();}
 
 function moveWithinSameDate(items,id,direction,render,open){const item=items.find(x=>String(x.id)===String(id));if(!item)return;const same=items.filter(x=>x.date===item.date&&x.status!=="confirmed").sort((a,b)=>(Number(a.order)||0)-(Number(b.order)||0));const pos=same.findIndex(x=>String(x.id)===String(id)),target=direction==="up"?pos-1:pos+1;if(pos<0||target<0||target>=same.length)return;const a=same[pos],b=same[target],tmp=a.order;a.order=b.order;b.order=tmp;save();render();open(id);}
-function moveFixedWithinDue(id,direction){const entry=effectiveFixedEntries(selectedMonth).find(x=>String(x.fixed.id)===String(id));if(!entry)return;const same=effectiveFixedEntries(selectedMonth).filter(x=>x.date===entry.date).map(x=>x.fixed).sort((a,b)=>(Number(a.order)||0)-(Number(b.order)||0));const pos=same.findIndex(x=>String(x.id)===String(id)),target=direction==="up"?pos-1:pos+1;if(pos<0||target<0||target>=same.length)return;const a=same[pos],b=same[target],tmp=Number(a.order)||pos;a.order=Number(b.order)||target;b.order=tmp;save();renderFixedExpenses();openFixedEdit(id);}
+function applyDraftOrders(items,orders){for(const item of items)if(Object.hasOwn(orders,String(item.id)))item.order=orders[String(item.id)];}
+function stageEditorOrder(kind,direction){
+  const fixed=kind==="fixed",draft=fixed?fixedEditDraft:plannedEditDraft;if(!draft||draft.saving)return;
+  let same;
+  if(fixed){
+    const entries=effectiveFixedEntries(draft.month),entry=entries.find(x=>String(x.fixed.id)===String(draft.id));if(!entry)return;
+    same=entries.filter(x=>x.date===entry.date).map(x=>x.fixed);
+  }else{
+    const item=getPlannedSource(draft.id);if(!item)return;
+    same=state.plannedExpenses.filter(x=>x.date===item.date&&x.status!=="confirmed");
+  }
+  same.sort((a,b)=>(draft.orders[String(a.id)]??(Number(a.order)||0))-(draft.orders[String(b.id)]??(Number(b.order)||0)));
+  const pos=same.findIndex(x=>String(x.id)===String(draft.id)),target=direction==="up"?pos-1:pos+1;
+  if(pos<0||target<0||target>=same.length)return;
+  [same[pos],same[target]]=[same[target],same[pos]];
+  same.forEach((item,index)=>{draft.orders[String(item.id)]=index+1;});
+  markDirty(fixed?"fixed-edit":"planned-edit");
+}
+function moveFixedWithinDue(id,direction){stageEditorOrder("fixed",direction);}
+
 
 function showDeleteConfirm(kind,item){pendingDelete={kind,id:String(item.id)};const lines=[`${kind==="expense"?'支出':'予定支出'}を削除しますか？`,`日付：${formatExpenseDate(item.date)}`,`カテゴリ：${item.category||'未設定'}`,`メモ：${String(item.memo||'').trim()||'なし'}`,`金額：${yen(item.amount)}`];$("deleteConfirmMessage").textContent=lines.join("\n");$("deleteConfirmModal").classList.remove("hidden");}
 function closeDeleteConfirm(){pendingDelete=null;$("deleteConfirmModal").classList.add("hidden");}
@@ -671,9 +781,9 @@ function bindEvents(){
   $("yearList").addEventListener("click",e=>{const b=e.target.closest("[data-year]");if(b)renderMonthGrid(Number(b.dataset.year));});let extendingYears=false;$("yearList").addEventListener("scroll",()=>{const el=$("yearList");if(!extendingYears&&el.scrollTop+el.clientHeight>=el.scrollHeight-40){extendingYears=true;const oldTop=el.scrollTop;earliestPickerYear-=10;renderMonthPicker();requestAnimationFrame(()=>{el.scrollTop=oldTop;extendingYears=false;});}});$("monthGrid").addEventListener("click",e=>{const b=e.target.closest("[data-month]");if(!b)return;const key=b.dataset.month;$("monthPickerModal").classList.add("hidden");switchMonth(key);});
   document.querySelectorAll("[data-entry-tab]").forEach(tab=>tab.addEventListener("click",()=>{const k=tab.dataset.entryTab;document.querySelectorAll("[data-entry-tab]").forEach(t=>{const a=t===tab;t.classList.toggle("active",a);t.setAttribute("aria-selected",a?"true":"false");});document.querySelectorAll("[data-entry-panel]").forEach(p=>p.classList.toggle("active",p.dataset.entryPanel===k));}));
   $("addExpense").onclick=addExpense;$("addPlannedExpense").onclick=addPlanned;$("addFixedExpense").onclick=addFixed;
-  $("expenseList").addEventListener("click",e=>{const b=e.target.closest("[data-edit]");if(b)openEdit(b.dataset.edit);});$("plannedList").addEventListener("click",e=>{const c=e.target.closest("[data-confirm-planned]"),ed=e.target.closest("[data-edit-planned]");if(c)return confirmPlanned(c.dataset.confirmPlanned);if(ed)openPlannedEdit(ed.dataset.editPlanned);});$("fixedList").addEventListener("click",e=>{const c=e.target.closest("[data-confirm-fixed]"),u=e.target.closest("[data-unpay-fixed]"),ed=e.target.closest("[data-edit-fixed]");if(c)return confirmFixed(c.dataset.confirmFixed);if(u)return unpayFixed(u.dataset.unpayFixed);if(ed)openFixedEdit(ed.dataset.editFixed);});
+  $("expenseList").addEventListener("click",e=>{const b=e.target.closest("[data-edit]");if(b)openEdit(b.dataset.edit);});$("plannedList").addEventListener("click",e=>{const c=e.target.closest("[data-confirm-planned]"),ed=e.target.closest("[data-edit-planned]");if(c)return confirmPlanned(c.dataset.confirmPlanned);if(ed)openPlannedEdit(ed.dataset.editPlanned);});$("fixedList").addEventListener("click",e=>{const c=e.target.closest("[data-confirm-fixed]"),ed=e.target.closest("[data-edit-fixed]");if(c)return confirmFixed(c.dataset.confirmFixed);if(ed)openFixedEdit(ed.dataset.editFixed);});
   $("closeModal").onclick=closeEdit;$("cancelEdit").onclick=closeEdit;$("saveEdit").onclick=saveExpenseEdit;$("deleteEditExpense").onclick=requestExpenseDelete;$("rollbackOrigin").onclick=()=>{const e=state.expenses.find(x=>String(x.id)===String($("editModal").dataset.id));if(!e)return;const t=expenseOriginType(e);if(t==="planned")rollbackPlannedExpense(e);if(t==="fixed")rollbackFixedExpense(e);};$("moveEditUp").onclick=()=>moveWithinSameDate(state.expenses,$("editModal").dataset.id,"up",renderAll,id=>openEdit(id,Boolean(annualEditContext)));$("moveEditDown").onclick=()=>moveWithinSameDate(state.expenses,$("editModal").dataset.id,"down",renderAll,id=>openEdit(id,Boolean(annualEditContext)));
-  $("closePlannedModal").onclick=closePlannedEdit;$("cancelPlannedEdit").onclick=closePlannedEdit;$("savePlannedEdit").onclick=savePlannedEdit;$("confirmPlannedFromEdit").onclick=confirmPlannedFromEdit;$("deletePlannedEditExpense").onclick=requestPlannedDelete;$("movePlannedEditUp").onclick=()=>moveWithinSameDate(state.plannedExpenses,$("plannedEditModal").dataset.id,"up",renderPlannedExpenses,openPlannedEdit);$("movePlannedEditDown").onclick=()=>moveWithinSameDate(state.plannedExpenses,$("plannedEditModal").dataset.id,"down",renderPlannedExpenses,openPlannedEdit);
+  $("closePlannedModal").onclick=closePlannedEdit;$("cancelPlannedEdit").onclick=closePlannedEdit;$("savePlannedEdit").onclick=savePlannedEdit;$("confirmPlannedFromEdit").onclick=confirmPlannedFromEdit;$("deletePlannedEditExpense").onclick=requestPlannedDelete;$("movePlannedEditUp").onclick=()=>stageEditorOrder("planned","up");$("movePlannedEditDown").onclick=()=>stageEditorOrder("planned","down");
   $("closeFixedModal").onclick=closeFixedEdit;$("cancelFixedEdit").onclick=closeFixedEdit;$("saveFixedEdit").onclick=saveFixedEdit;$("confirmFixedFromEdit").onclick=confirmFixedFromEdit;$("fixedPaymentAction").onclick=changeFixedPaymentStatus;$("deleteFixedFromMonth").onclick=deleteFixedFromMonth;$("deleteFixedCompletely").onclick=deleteFixedCompletely;$("moveFixedEditUp").onclick=()=>moveFixedWithinDue($("fixedEditModal").dataset.id,"up");$("moveFixedEditDown").onclick=()=>moveFixedWithinDue($("fixedEditModal").dataset.id,"down");
   ["editModal","plannedEditModal","fixedEditModal"].forEach(id=>$(id).addEventListener("click",e=>{if(e.target===$(id)){if(id==="editModal")closeEdit();if(id==="plannedEditModal")closePlannedEdit();if(id==="fixedEditModal")closeFixedEdit();}}));
   $("closeDeleteConfirm").onclick=closeDeleteConfirm;$("cancelDeleteConfirm").onclick=closeDeleteConfirm;$("confirmDeleteExpense").onclick=confirmDelete;$("deleteConfirmModal").addEventListener("click",e=>{if(e.target===$("deleteConfirmModal"))closeDeleteConfirm();});
