@@ -1,4 +1,4 @@
-const VERSION="49.04";
+const VERSION="49.05";
 const SCHEMA_VERSION=49;
 const PROD_STORAGE_KEYS={state:"moneyRuleAppV2",sections:"moneyRuleSectionPrefs",stats:"moneyRuleStatPrefs"};
 const LEGACY_STORAGE_KEYS={state:"moneyRuleDevAppV2",sections:"moneyRuleDevSectionPrefs",stats:"moneyRuleDevStatPrefs"};
@@ -68,6 +68,92 @@ function normalizeSettings(s){
   const extraSavingsPercent=Math.min(100,Math.max(0,Number(s.extraSavingsPercent)||0));
   return {minimumTakeHome,savingsTarget,extraAllowancePercent,extraSavingsPercent};
 }
+// Rule schedules are additive to schema 49. Income keeps its original budget-month key.
+const RULE_FIELDS=['minimumTakeHome','savingsTarget','extraAllowancePercent','extraSavingsPercent'];
+function sameRule(a,b){return JSON.stringify(normalizeSettings(a))===JSON.stringify(normalizeSettings(b));}
+function rulePlanIssues(s){
+  if(s?.rulePlan===undefined)return [];
+  const plan=s.rulePlan,issues=[];
+  if(!plan||typeof plan!=="object"||Array.isArray(plan)||plan.version!==1)return ['家計ルールの保存形式が不正です'];
+  for(const kind of ['changes','overrides']){
+    const entries=plan[kind];
+    if(!entries||typeof entries!=="object"||Array.isArray(entries)){issues.push('家計ルールの適用月データが不正です');continue;}
+    for(const [month,value] of Object.entries(entries)){
+      if(!validMonthKey(month))issues.push(`家計ルールの適用月が不正です：${month}`);
+      // Null overrides preserve legacy months which were explicitly unconfigured.
+      if(kind==='overrides'&&value===null)continue;
+      if(!value||typeof value!=="object"||Array.isArray(value)||RULE_FIELDS.some(k=>typeof value[k]!=="number"||!Number.isFinite(value[k])||value[k]<0)||value.extraAllowancePercent>100||value.extraSavingsPercent>100){issues.push(`${month}：家計ルールの値が不正です`);}
+    }
+  }
+  return issues;
+}
+function continuingRule(s,key){
+  const changes=s.rulePlan?.changes||{};
+  const from=Object.keys(changes).filter(k=>k<=key).sort().at(-1);
+  return from?{settings:changes[from],from}:{settings:null,from:null};
+}
+function initializeRulePlan(s){
+  if(s.rulePlan!==undefined)return;
+  const plan={version:1,changes:{},overrides:{}};
+  s.rulePlan=plan;
+  let previous=null;
+  for(const key of Object.keys(s.months||{}).filter(validMonthKey).sort()){
+    const rec=s.months[key],settings=normalizeSettings(rec?.settings);
+    if(!settings){if(previous)plan.overrides[key]=null;continue;}
+    // Preserve explicit future boundaries, including a deliberate equal-valued setting.
+    // An inherited snapshot differing from the current baseline is also preserved.
+    if(!rec.inheritedFrom||!sameRule(settings,previous))plan.changes[key]=clone(settings);
+    previous=settings;
+  }
+}
+function effectiveRule(s,key){
+  initializeRulePlan(s);
+  if(Object.hasOwn(s.rulePlan.overrides,key))return s.rulePlan.overrides[key];
+  return continuingRule(s,key).settings;
+}
+function syncRuleSnapshots(s){
+  for(const [key,rec] of Object.entries(s.months)){
+    if(!validMonthKey(key)||!rec)continue;
+    const settings=effectiveRule(s,key);rec.settings=settings?clone(settings):null;
+    rec.inheritedFrom=Object.hasOwn(s.rulePlan.changes,key)||Object.hasOwn(s.rulePlan.overrides,key)?null:continuingRule(s,key).from;
+  }
+}
+function applyRuleChange(s,key,settings,scope){
+  if(!validMonthKey(key)||!['once','onward'].includes(scope))throw new Error('Invalid rule scope');
+  if(!settings||RULE_FIELDS.some(k=>typeof settings[k]!=="number"||!Number.isFinite(settings[k])||settings[k]<0)||settings.extraAllowancePercent>100||settings.extraSavingsPercent>100||settings.extraAllowancePercent+settings.extraSavingsPercent!==100)throw new Error('Invalid rule values');
+  initializeRulePlan(s);
+  if(scope==='once')s.rulePlan.overrides[key]=clone(settings);
+  else{
+    s.rulePlan.changes[key]=clone(settings);delete s.rulePlan.overrides[key];
+    const next=Object.keys(s.rulePlan.changes).filter(k=>k>key).sort()[0];
+    // Unconfigured legacy snapshots are not deliberate future rule changes.
+    for(const month of Object.keys(s.rulePlan.overrides))if(month>=key&&(!next||month<next)&&s.rulePlan.overrides[month]===null)delete s.rulePlan.overrides[month];
+  }
+  syncRuleSnapshots(s);
+}
+function receivedIncomeRecord(s,receivedMonth){return s.months[addMonths(receivedMonth,1)]||null;}
+function annualIncomeTotal(s,year){
+  let total=0;
+  for(let month=1;month<=12;month++){
+    const rec=receivedIncomeRecord(s,`${year}-${pad2(month)}`);
+    for(const kind of ['income','bonus'])if(rec?.[kind]?.entered)total+=Number(rec[kind].value)||0;
+  }
+  return total;
+}
+function ruleChangeDetails(s,key){
+  initializeRulePlan(s);
+  const plan=s.rulePlan;
+  if(Object.hasOwn(plan.overrides,key)&&plan.overrides[key]){
+    const before=continuingRule(s,key).settings,after=plan.overrides[key];
+    return sameRule(before,after)?null:{scope:'once',before,after};
+  }
+  if(Object.hasOwn(plan.changes,key)){
+    const before=continuingRule(s,addMonths(key,-1)).settings,after=plan.changes[key];
+    return sameRule(before,after)?null:{scope:'onward',before,after};
+  }
+  return null;
+}
+
 function normalizeCurrentState(raw){
   const s=raw&&typeof raw==="object"?raw:createEmptyState();
   if(Number(s.schemaVersion)!==SCHEMA_VERSION)return null;
@@ -85,6 +171,8 @@ function normalizeCurrentState(raw){
   s.expenses=s.expenses.filter(Boolean).map(e=>({...e,id:String(e.id||newId("e")),amount:Math.max(0,Number(e.amount)||0),category:String(e.category||"未設定"),memo:String(e.memo||""),date:String(e.date||""),order:Number.isFinite(Number(e.order))?Number(e.order):Date.now(),origin:e.origin&&typeof e.origin==="object"?e.origin:null}));
   s.plannedExpenses=s.plannedExpenses.filter(Boolean).map(p=>({...p,id:String(p.id||newId("p")),amount:Math.max(0,Number(p.amount)||0),category:String(p.category||"未設定"),memo:String(p.memo||""),date:String(p.date||""),order:Number.isFinite(Number(p.order))?Number(p.order):Date.now(),status:p.status==="confirmed"?"confirmed":"pending",confirmedExpenseId:p.confirmedExpenseId?String(p.confirmedExpenseId):null}));
   s.fixedExpenses=s.fixedExpenses.filter(Boolean).map(f=>({...f,id:String(f.id||newId("f")),startMonth:String(f.startMonth||currentMonthKey()),endMonth:f.endMonth?String(f.endMonth):null,changes:Array.isArray(f.changes)?f.changes:[],paidMonths:f.paidMonths&&typeof f.paidMonths==="object"?f.paidMonths:{},needsReview:Boolean(f.needsReview)}));
+  if(rulePlanIssues(s).length)return null;
+  initializeRulePlan(s);
   return s;
 }
 
@@ -101,17 +189,11 @@ let appConfirmResolver=null;
 const sessionDates={expense:new Map(),planned:new Map()};
 
 function save(){if(state)writeJson(STORAGE_KEYS.state,state);}
-function nearestPriorSettings(key){
-  if(!state)return null;
-  const candidates=Object.keys(state.months).filter(k=>validMonthKey(k)&&compareMonth(k,key)<0&&state.months[k]?.settings).sort().reverse();
-  if(!candidates.length)return null;
-  return {settings:clone(state.months[candidates[0]].settings),from:candidates[0]};
-}
 function ensureMonthRecord(key,{saveNow=true}={}){
   if(!state||!validMonthKey(key))return null;
+  initializeRulePlan(state);
   if(state.months[key])return state.months[key];
-  const inherited=nearestPriorSettings(key);
-  state.months[key]=createMonthRecord(inherited?.settings||null,inherited?.from||null);
+  state.months[key]=createMonthRecord(effectiveRule(state,key),continuingRule(state,key).from);
   if(saveNow)save();
   return state.months[key];
 }
@@ -160,7 +242,7 @@ function expenseOriginType(expense){return sourceRelationIntact(expense)?expense
 
 function getBudgetData(key=selectedMonth){
   const rec=state.months[key]||null;
-  const settings=rec?.settings||null;
+  const settings=effectiveRule(state,key);
   const incomeEntered=Boolean(rec?.income?.entered);
   const income=incomeEntered?Math.max(0,Number(rec.income.value)||0):0;
   const bonus=rec?.bonus?.entered?Math.max(0,Number(rec.bonus.value)||0):0;
@@ -268,17 +350,10 @@ function updateDynamicTitles(){
   setText("plannedExpenseLabel","予定支出");
   setText("fixedPendingLabel","未払い固定費");
   setText("plannedSavingsLabel","貯金予定");
-  setText("incomeTitle",`${monthLabel(selectedMonth)}で使う前月の収入`);
-  setText("settingsTitle",`${monthLabel(selectedMonth)}の家計ルール`);
 }
 
 function loadMonthForms(){
-  const rec=selectedRecord();suppressDirty=true;
-  $("income").value=rec.income.entered?String(rec.income.value):"";
-  $("bonus").value=rec.bonus.entered?String(rec.bonus.value):"";
-  const s=rec.settings;
-  $("minimumTakeHome").value=s?String(s.minimumTakeHome):"";$("savingsTarget").value=s?String(s.savingsTarget):"";$("extraAllowancePercent").value=s?String(s.extraAllowancePercent):"";$("extraSavingsPercent").value=s?String(s.extraSavingsPercent):"";
-  setHidden("settingsMissing",Boolean(s));
+  suppressDirty=true;
   $("expenseAmount").value="";$("expenseMemo").value="";$("expenseDate").value=sessionDefaultDate("expense");
   $("plannedAmount").value="";$("plannedMemo").value="";$("plannedDate").value=sessionDefaultDate("planned");
   $("fixedAmount").value="";$("fixedMemo").value="";$("fixedDue").value="";
@@ -443,16 +518,16 @@ function showDeleteConfirm(kind,item){pendingDelete={kind,id:String(item.id)};co
 function closeDeleteConfirm(){pendingDelete=null;$("deleteConfirmModal").classList.add("hidden");}
 function confirmDelete(){if(!pendingDelete)return;const {kind,id}=pendingDelete;if(kind==="expense")state.expenses=state.expenses.filter(x=>String(x.id)!==id);if(kind==="planned")state.plannedExpenses=state.plannedExpenses.filter(x=>String(x.id)!==id);save();closeDeleteConfirm();closeEdit();closePlannedEdit();renderAll();}
 
-async function saveIncome(){const rec=selectedRecord();if(isPastSelected()&&!await appConfirm("過去月の予算結果が変わります。収入・ボーナスを保存しますか？"))return;const incomeRaw=$("income").value,bonusRaw=$("bonus").value;if(incomeRaw!==""){const v=Number(incomeRaw);if(!Number.isFinite(v)||v<0)return appAlert("前月の収入を確認してください。");rec.income={entered:true,value:v};}if(bonusRaw!==""){const v=Number(bonusRaw);if(!Number.isFinite(v)||v<0)return appAlert("ボーナス額を確認してください。");rec.bonus={entered:true,value:v};}save();clearDirty("income");renderAll();}
-async function clearIncome(){if(!await appConfirm("前月の収入を未入力状態に戻しますか？"))return;const rec=selectedRecord();rec.income={entered:false,value:0};save();suppressDirty=true;$("income").value="";suppressDirty=false;clearDirty("income");renderAll();}
-async function clearBonus(){if(!await appConfirm("ボーナスを未入力状態に戻しますか？"))return;const rec=selectedRecord();rec.bonus={entered:false,value:0};save();suppressDirty=true;$("bonus").value="";suppressDirty=false;clearDirty("income");renderAll();}
-async function saveSettings(){const ids=["minimumTakeHome","savingsTarget","extraAllowancePercent","extraSavingsPercent"],raw=ids.map(id=>$(id).value.trim());if(raw.some(v=>v===""))return appAlert("家計ルールはすべて入力してください。");const vals={minimumTakeHome:Number(raw[0]),savingsTarget:Number(raw[1]),extraAllowancePercent:Number(raw[2]),extraSavingsPercent:Number(raw[3])};if(Object.values(vals).some(v=>!Number.isFinite(v)||v<0))return appAlert("家計ルールの入力内容を確認してください。");if(vals.extraAllowancePercent>100||vals.extraSavingsPercent>100)return appAlert("割合は0〜100%で入力してください。");if(vals.extraAllowancePercent+vals.extraSavingsPercent!==100)return appAlert("超過分のお小遣い割合と貯金割合の合計を100%にしてください。");if(isPastSelected()&&!await appConfirm("過去月の予算結果が変わります。家計ルールを保存しますか？"))return;selectedRecord().settings=normalizeSettings(vals);selectedRecord().inheritedFrom=null;save();clearDirty("settings");setHidden("settingsMissing",true);renderAll();}
-
-function renderAll(){if(!state)return;renderMonthNavigation();updateDynamicTitles();renderBudgetDashboard();renderValidation();renderExpenses();renderPlannedExpenses();renderFixedExpenses();renderCategoryChart();renderDailyChart();renderMonthlyChart();if(activePage==="annual")renderAnnualReport();applySectionPrefs();applyStatPrefs();}
+function renderAll(){if(!state)return;renderMonthNavigation();updateDynamicTitles();renderBudgetDashboard();renderValidation();renderExpenses();renderPlannedExpenses();renderFixedExpenses();renderCategoryChart();renderDailyChart();renderMonthlyChart();if(activePage==="annual")renderAnnualReport();if(activePage==="rules")renderRulesPage();applySectionPrefs();applyStatPrefs();}
 
 function runIntegrityCheck(){const issues=collectIntegrityIssues(state),el=$("integrityResult");if(!issues.length){el.className="integrity-result good";el.innerHTML="<strong>問題は見つかりませんでした。</strong>";}else{el.className="integrity-result bad";el.innerHTML=`<strong>${issues.length}件の確認事項があります。</strong><ul>${issues.map(x=>`<li>${escapeHtml(x)}</li>`).join("")}</ul>`;}el.classList.remove("hidden");}
 function collectIntegrityIssues(s){
-  const issues=[],allIds=new Map();const register=(kind,id)=>{const k=String(id||"");if(!k){issues.push(`${kind}にIDがありません`);return;}if(allIds.has(k))issues.push(`重複ID：${k}（${allIds.get(k)} / ${kind}）`);else allIds.set(k,kind);};
+  if(!s)return ['データを読み込めません'];
+  const issues=rulePlanIssues(s),allIds=new Map();
+  if(s.rulePlan&&!issues.length){
+    for(const kind of ['changes','overrides'])for(const [month,value] of Object.entries(s.rulePlan[kind]))if(value&&value.extraAllowancePercent+value.extraSavingsPercent!==100)issues.push(`${month}：家計ルールの配分が合計100%ではありません`);
+    for(const [key,rec] of Object.entries(s.months||{}))if(validMonthKey(key)&&rec&&!sameRule(rec.settings,effectiveRule(s,key)))issues.push(`${monthLabel(key)}：家計ルールと月別設定が一致していません`);
+  }const register=(kind,id)=>{const k=String(id||"");if(!k){issues.push(`${kind}にIDがありません`);return;}if(allIds.has(k))issues.push(`重複ID：${k}（${allIds.get(k)} / ${kind}）`);else allIds.set(k,kind);};
   Object.keys(s.months||{}).forEach(k=>{if(!validMonthKey(k))issues.push(`不正な月キー：${k}`);const rec=s.months[k];if(rec?.settings&&(Number(rec.settings.extraAllowancePercent)+Number(rec.settings.extraSavingsPercent)!==100))issues.push(`${monthLabel(k)}：超過分割合の合計が100%ではありません`);});
   (s.expenses||[]).forEach(e=>{register("支出",e.id);if(!isValidDateString(e.date))issues.push(`支出 ${e.id}：不正な日付 ${e.date||'未入力'}`);if(e.origin?.type==="planned"){const p=s.plannedExpenses.find(p=>String(p.id)===String(e.origin.sourceId));if(!p)issues.push(`支出 ${e.id}：元の予定支出が存在しません`);else{if(p.status!=="confirmed")issues.push(`支出 ${e.id}：元の予定支出が未確定状態です`);if(String(p.confirmedExpenseId||"")!==String(e.id))issues.push(`支出 ${e.id}：予定支出との相互リンクが不整合です`);}}if(e.origin?.type==="fixed"){const f=s.fixedExpenses.find(f=>String(f.id)===String(e.origin.sourceId));if(!f)issues.push(`支出 ${e.id}：元の固定費が存在しません`);else{const m=String(e.origin.sourceMonth||"");if(!validMonthKey(m))issues.push(`支出 ${e.id}：固定費の元月が不正です`);else if(String(f.paidMonths?.[m]?.expenseId||"")!==String(e.id))issues.push(`支出 ${e.id}：固定費との相互リンクが不整合です`);}}});
   (s.plannedExpenses||[]).forEach(p=>{register("予定支出",p.id);if(!isValidDateString(p.date))issues.push(`予定支出 ${p.id}：不正な日付 ${p.date||'未入力'}`);if(p.status==="confirmed"){const e=s.expenses.find(e=>String(e.id)===String(p.confirmedExpenseId));if(!e)issues.push(`予定支出 ${p.id}：確定先の実支出が存在しません`);else if(e.origin?.type!=="planned"||String(e.origin.sourceId)!==String(p.id))issues.push(`予定支出 ${p.id}：実支出との相互リンクが不整合です`);}else if(p.confirmedExpenseId)issues.push(`予定支出 ${p.id}：未確定なのに確定先IDが残っています`);});
@@ -463,6 +538,7 @@ function collectIntegrityIssues(s){
 function validateV49BackupRaw(raw){
   const issues=[],ids=new Map();
   if(!raw||typeof raw!=="object"||Array.isArray(raw))return ["Ver.49データ本体を読み込めません"];
+  issues.push(...rulePlanIssues(raw));
   if(Number(raw.schemaVersion)!==SCHEMA_VERSION)issues.push(`schemaVersionが${SCHEMA_VERSION}ではありません`);
   if(!raw.months||typeof raw.months!=="object"||Array.isArray(raw.months))issues.push("月別データの形式が不正です");else Object.keys(raw.months).forEach(k=>{if(!validMonthKey(k))issues.push(`不正な月キー：${k}`);});
   [["expenses","支出"],["plannedExpenses","予定支出"],["fixedExpenses","固定費"]].forEach(([key,label])=>{if(!Array.isArray(raw[key]))issues.push(`${label}データの形式が不正です`);});
@@ -498,6 +574,7 @@ function convertLegacyState(legacy){
   (Array.isArray(legacy.fixedExpenses)?legacy.fixedExpenses:[]).forEach(f=>{const id=uniqueLegacyId(f.id,"f",used),day=Number(f.day),due=day>=1&&day<=31?{type:"day",day:Math.round(day)}:null,category=String(f.category||""),legacyAmount=Number(f.amount),amount=Number.isFinite(legacyAmount)&&legacyAmount>0?legacyAmount:0,needsReview=!category||!due||amount<=0;out.fixedExpenses.push({id,startMonth:now,endMonth:null,changes:[{effectiveMonth:now,amount,category,memo:String(f.memo||""),due}],paidMonths:{},needsReview,order:Number(f.order)||Date.now()});if(f.id!==undefined){const legacyKey=String(f.id),matches=fixedLegacyMap.get(legacyKey)||[];matches.push(id);fixedLegacyMap.set(legacyKey,matches);}});
   const plannedLegacyMap=new Map();(Array.isArray(legacy.plannedExpenses)?legacy.plannedExpenses:[]).forEach(p=>{const id=uniqueLegacyId(p.id,"p",used);out.plannedExpenses.push({id,amount:Math.max(0,Number(p.amount)||0),category:String(p.category||"その他"),memo:String(p.memo||""),date:String(p.date),order:Number(p.order)||Date.now(),status:"pending",confirmedExpenseId:null});if(p.id!==undefined){const key=String(p.id),list=plannedLegacyMap.get(key)||[];list.push(id);plannedLegacyMap.set(key,list);}});
   (Array.isArray(legacy.expenses)?legacy.expenses:[]).forEach(e=>{const id=uniqueLegacyId(e.id,"e",used),item={id,amount:Math.max(0,Number(e.amount)||0),category:String(e.category||"その他"),memo:String(e.memo||""),date:String(e.date),order:Number(e.order)||Date.now(),origin:null};const fixedLegacyKey=e.fixedId!==undefined?String(e.fixedId):null,fixedMatches=fixedLegacyKey===null?[]:(fixedLegacyMap.get(fixedLegacyKey)||[]);if(fixedMatches.length===1){const fid=fixedMatches[0],sourceMonth=validMonthKey(String(e.fixedMonth||""))?String(e.fixedMonth):monthOfDate(item.date),snapshot={amount:item.amount,category:item.category,memo:item.memo,date:item.date};const f=out.fixedExpenses.find(x=>x.id===fid);if(f&&sourceMonth===now){item.origin={type:"fixed",sourceId:fid,sourceMonth,snapshot,legacy:true};f.paidMonths[now]={expenseId:id,confirmedAt:"migration"};}else{item.legacyOrigin={type:"fixed",sourceId:fid,sourceMonth,snapshot,actionable:false};}}else if(fixedMatches.length>1){const sourceMonth=validMonthKey(String(e.fixedMonth||""))?String(e.fixedMonth):monthOfDate(item.date);item.legacyOrigin={type:"fixed",legacySourceId:fixedLegacyKey,sourceMonth,actionable:false};}else if(e.plannedSourceId!==undefined){const legacyKey=String(e.plannedSourceId),matches=plannedLegacyMap.get(legacyKey)||[];if(matches.length===1){const pid=matches[0],p=out.plannedExpenses.find(x=>String(x.id)===String(pid));if(p){p.status="confirmed";p.confirmedExpenseId=id;item.origin={type:"planned",sourceId:pid,sourceMonth:monthOfDate(item.date),snapshot:{amount:item.amount,category:item.category,memo:item.memo,date:item.date},legacy:true};}}else if(matches.length===0){const pid=uniqueLegacyId(e.plannedSourceId,"p",used);out.plannedExpenses.push({id:pid,amount:item.amount,category:item.category,memo:item.memo,date:item.date,order:item.order,status:"confirmed",confirmedExpenseId:id,migratedFromActual:true});item.origin={type:"planned",sourceId:pid,sourceMonth:monthOfDate(item.date),snapshot:{amount:item.amount,category:item.category,memo:item.memo,date:item.date},legacy:true};}else{item.legacyOrigin={type:"planned",legacySourceId:legacyKey,sourceMonth:monthOfDate(item.date),actionable:false};}}out.expenses.push(item);});
+  initializeRulePlan(out);
   return out;
 }
 function exportLegacyBackupForMigration(){
@@ -559,6 +636,7 @@ function bindEvents(){
   bindDirtyTracking();
   bindPageNavigation();
   bindAnnualReport();
+  bindRulesPage();
   $("prevMonth").onclick=()=>switchMonth(addMonths(selectedMonth,-1));$("nextMonth").onclick=()=>switchMonth(addMonths(selectedMonth,1));$("returnCurrentMonth").onclick=()=>switchMonth(currentMonthKey());
   $("openMonthPicker").onclick=()=>{selectedPickerYear=monthParts(selectedMonth).y;earliestPickerYear=Math.min(selectedPickerYear-10,new Date().getFullYear()-10);renderMonthPicker();$("monthPickerModal").classList.remove("hidden");setTimeout(()=>{const active=$("yearList").querySelector(".year-btn.active");active?.scrollIntoView({block:"center"});},0);};$("closeMonthPicker").onclick=()=>$("monthPickerModal").classList.add("hidden");$("monthPickerModal").addEventListener("click",e=>{if(e.target===$("monthPickerModal"))$("monthPickerModal").classList.add("hidden");});
   $("yearList").addEventListener("click",e=>{const b=e.target.closest("[data-year]");if(b)renderMonthGrid(Number(b.dataset.year));});let extendingYears=false;$("yearList").addEventListener("scroll",()=>{const el=$("yearList");if(!extendingYears&&el.scrollTop+el.clientHeight>=el.scrollHeight-40){extendingYears=true;const oldTop=el.scrollTop;earliestPickerYear-=10;renderMonthPicker();requestAnimationFrame(()=>{el.scrollTop=oldTop;extendingYears=false;});}});$("monthGrid").addEventListener("click",e=>{const b=e.target.closest("[data-month]");if(!b)return;const key=b.dataset.month;$("monthPickerModal").classList.add("hidden");switchMonth(key);});
@@ -572,7 +650,7 @@ function bindEvents(){
   $("closeDeleteConfirm").onclick=closeDeleteConfirm;$("cancelDeleteConfirm").onclick=closeDeleteConfirm;$("confirmDeleteExpense").onclick=confirmDelete;$("deleteConfirmModal").addEventListener("click",e=>{if(e.target===$("deleteConfirmModal"))closeDeleteConfirm();});
   $("closeAppConfirm").onclick=()=>closeAppConfirm(false);$("cancelAppConfirm").onclick=()=>closeAppConfirm(false);$("acceptAppConfirm").onclick=()=>closeAppConfirm(true);$("appConfirmModal").addEventListener("click",e=>{if(e.target===$("appConfirmModal"))closeAppConfirm(false);});
   $("closeAppAlert").onclick=closeAppAlert;$("closeAppAlertAction").onclick=closeAppAlert;$("appAlertModal").addEventListener("click",e=>{if(e.target===$("appAlertModal"))closeAppAlert();});
-  $("saveIncome").onclick=saveIncome;$("clearIncome").onclick=clearIncome;$("clearBonus").onclick=clearBonus;$("saveSettings").onclick=saveSettings;$("incomeToggle").onclick=toggleIncomeStat;
+  $("incomeToggle").onclick=toggleIncomeStat;
   $("runIntegrityCheck").onclick=runIntegrityCheck;$("exportBackup").onclick=exportCurrentBackup;$("importBackupButton").onclick=()=>$("importBackup").click();$("importBackup").addEventListener("change",e=>{importBackupFile(e.target.files?.[0]);e.target.value="";});
   document.addEventListener("click",e=>{const m=e.target.closest(".memo-cell");if(m)showMemoPopup(m,e);const minus=e.target.closest(".minus-btn");if(minus)toggleSection(minus.dataset.section);});
   document.addEventListener("visibilitychange",()=>{if(!document.hidden)refreshDateContext();});window.addEventListener("focus",refreshDateContext);
@@ -582,7 +660,12 @@ function bindEvents(){
 
 function bootstrap(){
   buildCategoryControls();buildDueSelect("fixedDue");buildDueSelect("fixedEditDue");bindEvents();
-  const currentRaw=readJson(STORAGE_KEYS.state,null),normalized=normalizeCurrentState(currentRaw);
+  const currentRaw=readJson(STORAGE_KEYS.state,null);
+  if(currentRaw&&rulePlanIssues(currentRaw).length){
+    appAlert("家計ルールの保存形式を読み込めません。現在のデータは変更していません。データ管理からバックアップを保存・復元できます。");
+    setMigrationStateStatus("家計ルールの保存形式を確認してください");return;
+  }
+  const normalized=normalizeCurrentState(currentRaw);
   const legacyStatus=readJsonStatus(LEGACY_STORAGE_KEYS.state),legacyRaw=legacyStatus.value;
   const migrationMarker=localStorage.getItem(STORAGE_KEYS.migrated);
   if(legacyStatus.exists&&legacyStatus.error&&migrationMarker!=="complete"){showBrokenLegacyMigrationGate();return;}
@@ -590,7 +673,7 @@ function bootstrap(){
   if(legacyRaw&&migrationMarker!=="complete"){showLegacyMigrationGate(legacyRaw,normalized);return;}
 
   if(normalized){
-    state=normalized;selectedMonth=currentMonthKey();ensureMonthRecord(selectedMonth);loadMonthForms();resetEntryTab();renderAll();
+    state=normalized;selectedMonth=currentMonthKey();ensureMonthRecord(selectedMonth);save();loadMonthForms();resetEntryTab();renderAll();
     setMigrationStateStatus(migrationMarker==="complete"?"Ver.49形式：移行済み":"Ver.49形式：利用中（旧ver.48.02検証データは見つかりません）");
     if(sessionStorage.getItem("moneyRuleDevV49MigrationCompleted")==="1"){sessionStorage.removeItem("moneyRuleDevV49MigrationCompleted");setTimeout(()=>appAlert("Ver.49へのデータ移行が完了しました。"),50);}
     return;
@@ -609,7 +692,7 @@ let activePage = "home";
 let recordOpener = null;
 let overlayScrollY = 0;
 function syncOverlayLock(){
-  const locked = $("annualYearDialog").open || !$("recordSheet").classList.contains("hidden") || !$("appMenuOverlay").classList.contains("hidden");
+  const locked = ["annualYearDialog","incomeEditor","ruleEditor","ruleScopeDialog"].some(id=>$(id).open) || !$("recordSheet").classList.contains("hidden") || !$("appMenuOverlay").classList.contains("hidden");
   if(locked && !document.body.classList.contains("navigation-locked")){
     overlayScrollY=window.scrollY;
     document.body.style.top=`-${overlayScrollY}px`;
@@ -631,6 +714,7 @@ function showAppPage(page){
   if(!["home","annual","rules","data"].includes(page))return;
   activePage=page;
   if(page==="annual")renderAnnualReport();
+  if(page==="rules")renderRulesPage();
   closeAppMenu();
   document.querySelectorAll("[data-app-page]").forEach(el=>el.classList.toggle("hidden",el.dataset.appPage!==page));
   document.querySelectorAll("#appMenu [data-page-link]").forEach(el=>{
@@ -667,12 +751,6 @@ function bindPageNavigation(){
   $("closeAppMenu").onclick=closeAppMenu;
   $("appMenuOverlay").onclick=e=>{if(e.target===$("appMenuOverlay"))closeAppMenu();};
   document.querySelectorAll("[data-page-link]").forEach(b=>b.onclick=()=>showAppPage(b.dataset.pageLink));
-  $("goToIncome").onclick=()=>{
-    showAppPage("home");
-    const prefs=readJson(STORAGE_KEYS.sections,{})||{};prefs.income=false;writeJson(STORAGE_KEYS.sections,prefs);applySectionPrefs();
-    document.querySelector('[data-section-content="income"]').scrollIntoView({block:"start"});
-    $("income").focus({preventScroll:true});
-  };
   document.querySelectorAll("[data-open-record]").forEach(b=>b.onclick=()=>openRecordSheet(b.dataset.openRecord,b));
   $("closeRecord").onclick=closeRecordSheet;
   $("recordSheet").onclick=e=>{if(e.target===$("recordSheet"))closeRecordSheet();};
@@ -802,12 +880,12 @@ function bindAnnualReport(){
   const changeYear=value=>{const n=Number(value);if(!Number.isInteger(n)||n<1000||n>9999)return;annualYear=n;applyAnnualSearch();resetAnnualMonthFolds();renderAnnualReport();};
   $("annualPrevYear").onclick=()=>changeYear(annualYear-1);
   $("annualNextYear").onclick=()=>changeYear(annualYear+1);
-  $("annualYear").onclick=openYearWheel;
+  $("annualYear").onclick=()=>openYearWheel("annual");
   $("closeYearWheel").onclick=closeYearWheel;
   $("cancelYearWheel").onclick=closeYearWheel;
   $("annualYearDialog").addEventListener("cancel",e=>{e.preventDefault();closeYearWheel();});
   $("annualYearDialog").addEventListener("click",e=>{if(e.target===$("annualYearDialog")){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)closeYearWheel();}});
-  $("confirmYearWheel").onclick=()=>{const year=wheelSelectedYear();closeYearWheel();changeYear(year);};
+  $("confirmYearWheel").onclick=()=>{const year=wheelSelectedYear();const target=yearWheelTarget;closeYearWheel();if(target==="rules")changeRulesYear(year);else changeYear(year);};
   $("yearWheel").addEventListener("scroll",updateYearWheel,{passive:true});
   $("yearWheel").onclick=e=>{const row=e.target.closest("[data-wheel-year]");if(row)$("yearWheel").scrollTo({top:(Number(row.dataset.wheelYear)-wheelStartYear)*44,behavior:"smooth"});};
   $("yearWheel").onkeydown=e=>{const delta={ArrowUp:-1,ArrowDown:1,PageUp:-10,PageDown:10}[e.key];if(delta!==undefined){e.preventDefault();positionYearWheel(Math.max(1000,Math.min(9999,wheelSelectedYear()+delta)));}};
@@ -832,11 +910,116 @@ function updateYearWheel(){
   if(year-wheelStartYear<10&&wheelStartYear>1000){const next=Math.max(1000,wheelStartYear-50),top=wheel.scrollTop;wheel.insertAdjacentHTML("afterbegin",wheelRows(next,wheelStartYear-1));wheel.scrollTop=top+(wheelStartYear-next)*44;wheelStartYear=next;}
   if(wheelEndYear-year<10&&wheelEndYear<9999){const next=Math.min(9999,wheelEndYear+50);wheel.insertAdjacentHTML("beforeend",wheelRows(wheelEndYear+1,next));wheelEndYear=next;}
 }
-function openYearWheel(){
-  $("annualYearDialog").showModal();syncOverlayLock();positionYearWheel(annualYear);$("yearWheel").focus({preventScroll:true});
+function openYearWheel(target="annual"){
+  yearWheelTarget=target;
+  $("annualYearDialog").showModal();syncOverlayLock();positionYearWheel(target==="rules"?rulesYear:annualYear);$("yearWheel").focus({preventScroll:true});
 }
 function closeYearWheel(){
-  $("annualYearDialog").close();syncOverlayLock();$("annualYear").focus({preventScroll:true});
+  $("annualYearDialog").close();syncOverlayLock();$(yearWheelTarget==="rules"?"rulesYear":"annualYear").focus({preventScroll:true});
+}
+
+let rulesYear=new Date().getFullYear();
+let ruleDraft=null;
+let yearWheelTarget='annual';
+function ruleSummaryHtml(settings){
+  if(!settings)return '<span class="muted">未設定</span>';
+  return `<span class="month-value"><span>最低手取り</span><strong>${yen(settings.minimumTakeHome)}</strong></span><span class="month-value"><span>貯金目標</span><strong>${yen(settings.savingsTarget)}</strong></span><span class="rule-allocation">超過分：お小遣い ${settings.extraAllowancePercent}% ／ 貯金 ${settings.extraSavingsPercent}%</span>`;
+}
+function renderRulesPage(){
+  if(!state)return;
+  setText('rulesYear',`${rulesYear}年 ▾`);
+  $('rulesPrevYear').disabled=rulesYear<=1000;$('rulesNextYear').disabled=rulesYear>=9999;
+  setText('annualIncomeTitle',`${rulesYear}年の収入`);setText('annualRuleTitle',`${rulesYear}年の家計ルール`);
+  setText('annualIncomeTotal',yen(annualIncomeTotal(state,rulesYear)));
+  const keys=Array.from({length:12},(_,i)=>`${rulesYear}-${pad2(i+1)}`);
+  $('incomeMonths').innerHTML=keys.map(key=>{
+    const rec=receivedIncomeRecord(state,key),current=key===currentMonthKey();
+    const amount=kind=>rec?.[kind]?.entered?yen(rec[kind].value):'未入力';
+    return `<button type="button" class="month-setting-row${current?' current-setting-month':''}" data-income-month="${key}" aria-label="${monthLabel(key)}の収入を編集" ${validMonthKey(addMonths(key,1))?'':'disabled'}><span class="setting-month-name">${shortMonthLabel(key)}</span><span class="month-setting-values"><span class="month-value"><span>給与</span><strong>${amount('income')}</strong></span><span class="month-value"><span>ボーナス</span><strong>${amount('bonus')}</strong></span></span></button>`;
+  }).join('');
+  $('ruleMonths').innerHTML=keys.map(key=>{
+    const settings=effectiveRule(state,key),change=ruleChangeDetails(state,key),current=key===currentMonthKey();
+    const badge=change?`<span class="rule-change-badge">${change.scope==='once'?'この月だけ変更':'この月から変更'}</span>`:'';
+    return `<button type="button" class="month-setting-row${current?' current-setting-month':''}" data-rule-month="${key}" aria-label="${monthLabel(key)}の家計ルールを編集"><span class="setting-month-name">${shortMonthLabel(key)}</span><span class="month-setting-values">${badge}${ruleSummaryHtml(settings)}</span></button>`;
+  }).join('');
+}
+function closeSettingsDialog(id){
+  const dialog=$(id),month=dialog.dataset.month;
+  dialog.close();clearDirty(id==='incomeEditor'?'income-edit':'rule-edit');syncOverlayLock();
+  const attr=id==='incomeEditor'?'data-income-month':'data-rule-month';
+  requestAnimationFrame(()=>document.querySelector(`[${attr}="${month}"]`)?.focus({preventScroll:true}));
+}
+function openIncomeEditor(month){
+  if(!state||!validMonthKey(month)||!validMonthKey(addMonths(month,1)))return;
+  const dialog=$('incomeEditor'),rec=receivedIncomeRecord(state,month);
+  dialog.dataset.month=month;setText('incomeEditorTitle',`${monthLabel(month)}の収入`);
+  $('incomeSalary').value=rec?.income?.entered?rec.income.value:'';
+  $('incomeBonus').value=rec?.bonus?.entered?rec.bonus.value:'';
+  setHidden('incomePastNote',addMonths(month,1)>=currentMonthKey());
+  setHidden('incomeEditorError',true);clearDirty('income-edit');
+  dialog.showModal();syncOverlayLock();$('closeIncomeEditor').focus({preventScroll:true});
+}
+function saveIncomeEditor(){
+  const month=$('incomeEditor').dataset.month;
+  const values=[$('incomeSalary').value.trim(),$('incomeBonus').value.trim()];
+  const inputs=[$('incomeSalary'),$('incomeBonus')];
+  if(inputs.some(el=>el.validity.badInput)||values.some(v=>v!==''&&(!Number.isFinite(Number(v))||Number(v)<0))){setText('incomeEditorError','給与・ボーナスは0円以上の数値で入力してください。');setHidden('incomeEditorError',false);return;}
+  const record=ensureMonthRecord(addMonths(month,1),{saveNow:false});
+  [record.income,record.bonus]=values.map(v=>({entered:v!=='',value:v===''?0:Number(v)}));
+  save();renderAll();closeSettingsDialog('incomeEditor');
+}
+function openRuleEditor(month){
+  if(!state||!validMonthKey(month))return;
+  const settings=effectiveRule(state,month),dialog=$('ruleEditor');dialog.dataset.month=month;
+  setText('ruleEditorTitle',`${monthLabel(month)}の家計ルール`);
+  RULE_FIELDS.forEach(field=>$('rule-'+field).value=settings?settings[field]:'');
+  const change=ruleChangeDetails(state,month),labels={minimumTakeHome:'最低限の手取り',savingsTarget:'貯金目標',extraAllowancePercent:'お小遣いへの配分',extraSavingsPercent:'貯金への配分'};
+  const format=(field,value)=>value==null?'未設定':field.endsWith('Percent')?`${value}%`:yen(value);
+  $('ruleChangeDetails').innerHTML=change?RULE_FIELDS.filter(field=>change.before?.[field]!==change.after[field]).map(field=>`<div class="rule-change-detail"><span>${labels[field]}</span><strong>${format(field,change.before?.[field])} → ${format(field,change.after[field])}</strong></div>`).join(''):'';
+  setHidden('ruleChangeDetails',!change);setHidden('ruleEditorError',true);
+  setHidden('rulePastNote',month>=currentMonthKey());ruleDraft=null;clearDirty('rule-edit');
+  dialog.showModal();syncOverlayLock();$('closeRuleEditor').focus({preventScroll:true});
+}
+function chooseRuleScope(){
+  const inputs=RULE_FIELDS.map(field=>$('rule-'+field)),values=inputs.map(el=>el.value.trim());
+  let error='';
+  if(inputs.some(el=>el.validity.badInput)||values.some(v=>v===''||!Number.isFinite(Number(v))||Number(v)<0))error='家計ルールはすべて0以上の数値で入力してください。';
+  else if(Number(values[2])>100||Number(values[3])>100||Number(values[2])+Number(values[3])!==100)error='お小遣いと貯金への配分は、合計100%にしてください。';
+  if(error){setText('ruleEditorError',error);setHidden('ruleEditorError',false);return;}
+  ruleDraft=Object.fromEntries(RULE_FIELDS.map((field,i)=>[field,Number(values[i])]));
+  setHidden('ruleEditorError',true);
+  const month=$('ruleEditor').dataset.month;setText('ruleScopeMonth',`${monthLabel(month)}のルールを適用する範囲`);
+  $('ruleScopeDialog').showModal();syncOverlayLock();$('scopeThisMonth').focus({preventScroll:true});
+}
+function closeRuleScope(){
+  $('ruleScopeDialog').close();ruleDraft=null;syncOverlayLock();$('saveRuleEditor').focus({preventScroll:true});
+}
+function saveRuleScope(scope){
+  if(!ruleDraft)return;
+  const month=$('ruleEditor').dataset.month;
+  applyRuleChange(state,month,ruleDraft,scope);
+  ensureMonthRecord(month,{saveNow:false});save();ruleDraft=null;
+  $('ruleScopeDialog').close();renderAll();closeSettingsDialog('ruleEditor');
+}
+function changeRulesYear(year){
+  if(!Number.isInteger(year)||year<1000||year>9999)return;
+  rulesYear=year;renderRulesPage();
+}
+function bindRulesPage(){
+  $('rulesPrevYear').onclick=()=>changeRulesYear(rulesYear-1);$('rulesNextYear').onclick=()=>changeRulesYear(rulesYear+1);
+  $('rulesYear').onclick=()=>openYearWheel('rules');
+  $('incomeMonths').onclick=e=>{const row=e.target.closest('[data-income-month]');if(row)openIncomeEditor(row.dataset.incomeMonth);};
+  $('ruleMonths').onclick=e=>{const row=e.target.closest('[data-rule-month]');if(row)openRuleEditor(row.dataset.ruleMonth);};
+  $('saveIncomeEditor').onclick=saveIncomeEditor;$('saveRuleEditor').onclick=chooseRuleScope;
+  $('clearIncomeSalary').onclick=()=>{$('incomeSalary').value='';markDirty('income-edit');};
+  $('clearIncomeBonus').onclick=()=>{$('incomeBonus').value='';markDirty('income-edit');};
+  for(const [id,close,cancel] of [['incomeEditor','closeIncomeEditor','cancelIncomeEditor'],['ruleEditor','closeRuleEditor','cancelRuleEditor']]){
+    $(close).onclick=$(cancel).onclick=()=>closeSettingsDialog(id);
+    $(id).addEventListener('cancel',e=>{e.preventDefault();closeSettingsDialog(id);});
+  }
+  $('scopeThisMonth').onclick=()=>saveRuleScope('once');$('scopeFromMonth').onclick=()=>saveRuleScope('onward');
+  $('cancelRuleScope').onclick=closeRuleScope;$('closeRuleScope').onclick=closeRuleScope;
+  $('ruleScopeDialog').addEventListener('cancel',e=>{e.preventDefault();closeRuleScope();});
 }
 
 bootstrap();
