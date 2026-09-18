@@ -8,12 +8,12 @@
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)"/>
 <meta name="theme-color" content="#111418" media="(prefers-color-scheme: dark)"/>
 <link rel="manifest" href="manifest.json"/>
-<link href="style.css?v=49.06" rel="stylesheet"/>
+<link href="style.css?v=49.07" rel="stylesheet"/>
 </head>
 <body>
 <div class="dev-environment-banner" role="status">検証環境</div>
 <main class="container" id="appRoot">
-  <header class="app-header"><h1>家計簿 <span class="header-version">ver.49.06</span></h1><button id="openAppMenu" class="secondary-btn menu-toggle" type="button" aria-label="メニューを開く" aria-expanded="false" aria-controls="appMenu">☰</button></header>
+  <header class="app-header"><h1>家計簿 <span class="header-version">ver.49.07</span></h1><button id="openAppMenu" class="secondary-btn menu-toggle" type="button" aria-label="メニューを開く" aria-expanded="false" aria-controls="appMenu">☰</button></header>
   <div id="appMenuOverlay" class="menu-overlay hidden">
     <nav id="appMenu" class="app-menu" aria-label="メインメニュー">
       <div class="modal-header"><h2>メニュー</h2><button id="closeAppMenu" class="close-btn" type="button" aria-label="メニューを閉じる">×</button></div>
@@ -240,18 +240,16 @@
 
   <div id="fixedEditModal" class="modal hidden"><div class="modal-box" data-dirty-area="fixed-edit">
     <div class="modal-header"><h2>固定費を編集</h2><button id="closeFixedModal" class="close-btn" type="button">×</button></div>
-    <div id="fixedPaidNotice" class="inline-warning hidden">この月は支払済みです。</div>
     <label>金額<input id="fixedEditAmount" type="number" min="0" step="100" inputmode="numeric"></label>
     <label>カテゴリ<select id="fixedEditCategory"></select></label>
     <label>メモ<input id="fixedEditMemo" type="text"></label>
     <label>毎月の支払日<select id="fixedEditDue"></select></label>
-    <section class="fixed-skip-setting" aria-labelledby="fixedSkipTitle">
-      <h3 id="fixedSkipTitle">今月の支払い設定</h3>
-      <button id="toggleFixedSkip" type="button" class="secondary-btn">この月は支払わない</button>
-      <p id="fixedSkipHelp" class="entry-hint">この月のみ支払い対象から外します。翌月以降には影響しません。</p>
-      <p id="fixedSkipPaidNotice" class="inline-warning hidden">先に支払済みを取り消してください。</p>
-    </section>
     <div class="modal-reorder"><span>同じ支払日内の並び順</span><div><button id="moveFixedEditUp" type="button" class="secondary-btn">▲ 上へ</button><button id="moveFixedEditDown" type="button" class="secondary-btn">▼ 下へ</button></div></div>
+    <section class="fixed-payment-setting" aria-labelledby="fixedPaymentTitle">
+      <h3 id="fixedPaymentTitle">今月の支払い</h3>
+      <p id="fixedPaymentStatus" class="fixed-payment-status">未払い</p>
+      <button id="fixedPaymentAction" type="button" class="secondary-btn">この月は支払わない</button>
+    </section>
     <div class="modal-actions split-actions fixed-delete-actions"><button id="deleteFixedFromMonth" type="button" class="edit-modal-delete-btn">この月以降削除</button><button id="deleteFixedCompletely" type="button" class="danger-btn">完全削除</button></div>
     <div class="modal-actions fixed-edit-actions"><button id="cancelFixedEdit" class="secondary-btn" type="button">キャンセル</button><button id="saveFixedEdit" type="button">保存</button></div>
   </div></div>
@@ -304,9 +302,9 @@
   </div></div>
 
   <div id="memoPopup" class="memo-popup hidden" role="status"></div>
-  <footer class="app-footer"><h1>家計簿 <span class="app-version">ver.49.06</span></h1><p>固定費の支払いなし対応・検証版</p></footer>
+  <footer class="app-footer"><h1>家計簿 <span class="app-version">ver.49.07</span></h1><p>固定費の支払い状態操作・検証版</p></footer>
 </main>
-<script src="app.js?v=49.06"></script>
+<script src="app.js?v=49.07"></script>
 <script>
 if ("serviceWorker" in navigator) {
   let reloading = false;
