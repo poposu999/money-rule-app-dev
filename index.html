@@ -8,12 +8,13 @@
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)"/>
 <meta name="theme-color" content="#111418" media="(prefers-color-scheme: dark)"/>
 <link rel="manifest" href="manifest.json"/>
-<link href="style.css?v=49.12" rel="stylesheet"/>
+<link href="style.css?v=49.13" rel="stylesheet"/>
+<link href="workflow.css?v=49.13" rel="stylesheet"/>
 </head>
 <body>
 <div class="dev-environment-banner" role="status">検証環境</div>
 <main class="container" id="appRoot">
-  <header class="app-header"><h1>家計簿 <span class="header-version">ver.49.12</span></h1><button id="openAppMenu" class="secondary-btn menu-toggle" type="button" aria-label="メニューを開く" aria-expanded="false" aria-controls="appMenu">☰</button></header>
+  <header class="app-header"><h1>家計簿 <span class="header-version">ver.49.13</span></h1><button id="openAppMenu" class="secondary-btn menu-toggle" type="button" aria-label="メニューを開く" aria-expanded="false" aria-controls="appMenu">☰</button></header>
   <div id="appMenuOverlay" class="menu-overlay hidden">
     <nav id="appMenu" class="app-menu" aria-label="メインメニュー">
       <div class="modal-header"><h2>メニュー</h2><button id="closeAppMenu" class="close-btn" type="button" aria-label="メニューを閉じる">×</button></div>
@@ -57,6 +58,7 @@
     </div>
     <div class="budget-status neutral" id="dashboardStatus"><strong id="dashboardStatusLabel">データ待ち</strong><span id="dashboardStatusMessage">収入を入力すると判定します。</span></div>
   </section>
+  <button id="recordButton" class="secondary-btn list-add-button" type="button" data-open-record="expense">＋ 記録</button>
   <section class="card stats" data-section-content="stats">
     <div class="section-title full"><h2 id="statsTitle">今月の内訳</h2><button class="minus-btn" data-section="stats">−</button></div>
     <div class="stat"><span id="spendingBudgetLabel">予算</span><strong id="spendingBudget">—</strong></div>
@@ -149,7 +151,7 @@
     <div class="backup-actions"><button id="exportBackup" type="button">バックアップを書き出す</button><button class="secondary-btn" id="importBackupButton" type="button">バックアップを読み込む</button><input accept="application/json,.json" hidden id="importBackup" type="file"/></div>
     <p class="entry-hint" id="backupStatus"></p>
   </section></div>
-  <button id="recordButton" class="record-fab" type="button" data-open-record="expense">＋ 記録</button>
+
   <div id="recordSheet" class="modal record-sheet hidden" role="dialog" aria-modal="true" aria-labelledby="entryTitle">  <section class="modal-box entry-section record-sheet-box">
     <div class="section-title"><h2 id="entryTitle">記録を追加</h2><button id="closeRecord" class="close-btn" type="button" aria-label="記録画面を閉じる">×</button></div>
     <p class="entry-hint" id="recordMonthLabel"></p>
@@ -295,20 +297,24 @@
 </div></div>
 
   <div id="migrationModal" class="modal hidden migration-modal"><div class="modal-box migration-box">
-    <div class="modal-header"><h2>Ver.49形式へのデータ移行</h2></div>
-    <p>Ver.48系の検証データをVer.49形式へ移行します。移行前にバックアップを保存してください。</p>
+    <div class="modal-header"><h2>新形式へのデータ移行</h2></div>
+    <p>現在の検証データを新形式へ移行します。先にバックアップファイルを保存し、保存できたことを確認してください。移行前のデータは保持します。</p>
     <div class="migration-actions"><button id="migrationBackup" type="button">先にバックアップを保存</button><button id="startMigration" type="button" disabled>移行を開始</button></div>
+    <button id="migrationRestore" class="secondary-btn" type="button">バックアップから復元</button>
     <div id="migrationStatus" class="migration-status"></div>
     <div id="migrationErrors" class="migration-errors"></div>
   </div></div>
 
   <div id="memoPopup" class="memo-popup hidden" role="status"></div>
-  <footer class="app-footer"><h1>家計簿 <span class="app-version">ver.49.12</span></h1><p>予定支出・固定費の編集操作統一・検証版</p></footer>
+  <footer class="app-footer"><h1>家計簿 <span class="app-version">ver.49.13</span></h1><p>支払い操作・データ保護の統合更新・検証版</p></footer>
 </main>
-<script src="app.js?v=49.12"></script>
+<script src="model.js?v=49.13"></script>
+<script src="app.js?v=49.13"></script>
+<script src="workflow.js?v=49.13"></script>
 <script>
 if ("serviceWorker" in navigator) {
   let reloading = false;
+  const hadController = Boolean(navigator.serviceWorker.controller);
   window.addEventListener("load", async () => {
     try {
       const registration = await navigator.serviceWorker.register("./sw.js", { updateViaCache: "none" });
@@ -316,7 +322,7 @@ if ("serviceWorker" in navigator) {
     } catch (e) {}
   });
   navigator.serviceWorker.addEventListener("controllerchange", () => {
-    if (reloading) return;
+    if (reloading || !hadController || v50Busy || v50Editor || hasUnsavedChanges() || !document.getElementById('migrationModal').classList.contains('hidden')) return;
     reloading = true;
     window.location.reload();
   });

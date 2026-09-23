@@ -1,5 +1,5 @@
-const VERSION="49.12";
-const SCHEMA_VERSION=49;
+const VERSION="49.13";
+const SCHEMA_VERSION=50;
 const PROD_STORAGE_KEYS={state:"moneyRuleAppV2",sections:"moneyRuleSectionPrefs",stats:"moneyRuleStatPrefs"};
 const LEGACY_STORAGE_KEYS={state:"moneyRuleDevAppV2",sections:"moneyRuleDevSectionPrefs",stats:"moneyRuleDevStatPrefs"};
 const STORAGE_KEYS={state:"moneyRuleDevAppV49",sections:"moneyRuleDevSectionPrefs",stats:"moneyRuleDevStatPrefs",initialized:"moneyRuleDevInitialized",migrated:"moneyRuleDevV49Migrated"};
@@ -21,7 +21,7 @@ function initializeDevStorage(){
   });
   localStorage.setItem(STORAGE_KEYS.initialized,"1");
 }
-initializeDevStorage();
+// Schema-50 bootstrap decides migration before any write; no production copying.
 
 function readJson(key,fallback=null){
   try{const raw=localStorage.getItem(key);return raw===null?fallback:JSON.parse(raw);}catch{return fallback;}
@@ -1161,4 +1161,4 @@ function bindRulesPage(){
   $('ruleScopeDialog').addEventListener('cancel',e=>{e.preventDefault();closeRuleScope();});
 }
 
-bootstrap();
+// Bootstrapped by workflow.js after schema-50 adapters are installed.

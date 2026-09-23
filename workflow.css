@@ -1,0 +1,11 @@
+.v50-dialog{width:min(550px,calc(100vw - 20px));max-height:calc(100dvh - 24px);overflow:auto;overscroll-behavior:contain;border:1px solid #d5dbe0;border-radius:14px;padding:18px;background:#fff;color:#20242a}
+.v50-dialog::backdrop{background:#1a1e246e}
+.v50-dialog h2{font-size:18px;margin:0 0 14px}.v50-dialog p{font-size:13px;line-height:1.6}.v50-dialog .modal-actions{position:relative}
+body:has(.v50-dialog[open]){overflow:hidden}
+.v50-check{display:flex;flex-direction:row;align-items:center;gap:8px}.v50-check input{width:20px;height:20px;flex-shrink:0}
+.v50-error{color:#b42318}.v50-diff-wrap{overflow:auto}.v50-diff{width:100%;border-collapse:collapse;table-layout:fixed;font-size:12px}.v50-diff th,.v50-diff td{border:1px solid #ddd;padding:6px;overflow-wrap:anywhere;text-align:left;vertical-align:top}.v50-issue{border-bottom:1px solid #ddd;padding:12px 0}
+.table-actions .v50-state-label{padding:3px 4px;font-size:9px;min-width:0;line-height:normal;flex-shrink:0}
+.expense-table-wrap{overflow-x:auto;overscroll-behavior-x:contain}.expense-table{min-width:350px}.table-actions{width:auto;min-width:max-content}.expense-table td.action-col{overflow:visible}
+#recordButton{margin:0 0 14px;width:100%}
+@media(max-width:680px){.table-actions .v50-state-label{padding:1px 2px;font-size:7.5px;min-height:18px;line-height:1.05;display:inline-flex;align-items:center}.v50-dialog{padding:14px}.v50-dialog .modal-actions button{min-height:40px}.expense-table th:nth-child(5),.expense-table td:nth-child(5){width:24%}.expense-table th:nth-child(2),.expense-table td:nth-child(2){width:34%}}
+@media(prefers-color-scheme:dark){.v50-dialog{background:#181c21;color:#e8ebef;border-color:#454c55}.v50-diff th,.v50-diff td,.v50-issue{border-color:#454c55}.v50-error{color:#ffb4ab}}
