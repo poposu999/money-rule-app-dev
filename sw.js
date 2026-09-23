@@ -1,4 +1,4 @@
-// 家計簿 ver.49.13（検証版）
+// 家計簿 ver.49.14（検証版）
 const LEGACY_DEV_CACHES=new Set(["money-rule-app-v48.01"]);
 const DEV_CACHE_PREFIX="money-rule-app-dev-";
 

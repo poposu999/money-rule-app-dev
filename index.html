@@ -8,13 +8,13 @@
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)"/>
 <meta name="theme-color" content="#111418" media="(prefers-color-scheme: dark)"/>
 <link rel="manifest" href="manifest.json"/>
-<link href="style.css?v=49.13" rel="stylesheet"/>
-<link href="workflow.css?v=49.13" rel="stylesheet"/>
+<link href="style.css?v=49.14" rel="stylesheet"/>
+<link href="workflow.css?v=49.14" rel="stylesheet"/>
 </head>
 <body>
 <div class="dev-environment-banner" role="status">検証環境</div>
 <main class="container" id="appRoot">
-  <header class="app-header"><h1>家計簿 <span class="header-version">ver.49.13</span></h1><button id="openAppMenu" class="secondary-btn menu-toggle" type="button" aria-label="メニューを開く" aria-expanded="false" aria-controls="appMenu">☰</button></header>
+  <header class="app-header"><h1>家計簿 <span class="header-version">ver.49.14</span></h1><button id="openAppMenu" class="secondary-btn menu-toggle" type="button" aria-label="メニューを開く" aria-expanded="false" aria-controls="appMenu">☰</button></header>
   <div id="appMenuOverlay" class="menu-overlay hidden">
     <nav id="appMenu" class="app-menu" aria-label="メインメニュー">
       <div class="modal-header"><h2>メニュー</h2><button id="closeAppMenu" class="close-btn" type="button" aria-label="メニューを閉じる">×</button></div>
@@ -58,7 +58,6 @@
     </div>
     <div class="budget-status neutral" id="dashboardStatus"><strong id="dashboardStatusLabel">データ待ち</strong><span id="dashboardStatusMessage">収入を入力すると判定します。</span></div>
   </section>
-  <button id="recordButton" class="secondary-btn list-add-button" type="button" data-open-record="expense">＋ 記録</button>
   <section class="card stats" data-section-content="stats">
     <div class="section-title full"><h2 id="statsTitle">今月の内訳</h2><button class="minus-btn" data-section="stats">−</button></div>
     <div class="stat"><span id="spendingBudgetLabel">予算</span><strong id="spendingBudget">—</strong></div>
@@ -306,11 +305,12 @@
   </div></div>
 
   <div id="memoPopup" class="memo-popup hidden" role="status"></div>
-  <footer class="app-footer"><h1>家計簿 <span class="app-version">ver.49.13</span></h1><p>支払い操作・データ保護の統合更新・検証版</p></footer>
+  <button id="recordButton" class="record-fab" type="button" data-open-record="expense">＋ 記録</button>
+  <footer class="app-footer"><h1>家計簿 <span class="app-version">ver.49.14</span></h1><p>編集操作の改善・検証版</p></footer>
 </main>
-<script src="model.js?v=49.13"></script>
-<script src="app.js?v=49.13"></script>
-<script src="workflow.js?v=49.13"></script>
+<script src="model.js?v=49.14"></script>
+<script src="app.js?v=49.14"></script>
+<script src="workflow.js?v=49.14"></script>
 <script>
 if ("serviceWorker" in navigator) {
   let reloading = false;

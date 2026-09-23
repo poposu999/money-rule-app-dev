@@ -88,7 +88,7 @@ renderFixedExpenses=()=>{
 function v50RenderWarning(){let box=$('v50-budget-warning');if(!box){box=document.createElement('button');box.id='v50-budget-warning';box.className='inline-warning';$('dashboardRemaining')?.parentElement?.append(box);if(!box.isConnected)document.querySelector('.budget-dashboard').append(box);box.onclick=v50ShowIssues;}const affected=v50Issues.some(i=>i.months.includes(selectedMonth)||i.refs.some(r=>r.from&&r.from<=selectedMonth&&(!r.to||selectedMonth<r.to)));box.hidden=!affected;box.textContent='集計要確認：判明しているデータで表示しています。金額が正確でない可能性があります。確認する';}
 function v50Input(name,label,value,type='text'){return `<label>${escapeHtml(label)}<input data-field="${name}" type="${type}" value="${escapeHtml(value??'')}" ${type==='number'?'min="0" step="1" inputmode="decimal"':''}></label>`;}
 function v50EditorValues(ctx){const out={};ctx.el.querySelectorAll('[data-field]').forEach(el=>{out[el.dataset.field]=el.dataset.field==='amount'?Number(el.value):el.value;});if(ctx.ref.kind==='fixed')out.due=valueToDue(out.due);return out;}
-function v50Changed(ctx){return !M.equal(v50EditorValues(ctx),ctx.initial)||Object.keys(ctx.orders).length>0;}
+function v50Changed(ctx){return ctx.targetStatus!==ctx.initialStatus||!M.equal(v50EditorValues(ctx),ctx.initial)||Object.keys(ctx.orders).length>0;}
 function v50CloseEditor(){if(v50Editor){v50Editor.el.close();v50Editor.el.remove();v50Editor=null;}clearDirty('v50-edit');}
 function v50Open(ref,originContext=null){
   if(!v50Guard(ref))return;v50CloseEditor();const fixed=ref.kind==='fixed',expense=ref.kind==='expense',r=expense?state.expenses.find(e=>e.id===ref.id):M.findSource(state,ref);if(!r)return;
@@ -98,7 +98,7 @@ function v50Open(ref,originContext=null){
   const dueOptions=Array.from({length:31},(_,i)=>`<option value="day:${i+1}">${i+1}日</option>`).join('')+'<option value="eom">月末</option>';
   d.innerHTML=`<div class="modal-header"><h2>${escapeHtml(title)}</h2><button type="button" data-editor="cancel" class="close-btn">×</button></div>${v50Input('amount',fixed&&paid?'実際の支払額':'金額',value.amount,'number')}<label>カテゴリ<select data-field="category">${[...new Set([...CATEGORIES,value.category])].map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('')}</select></label>${v50Input('memo','メモ',value.memo)}${fixed?`<label>毎月の支払日<select data-field="due"><option value="">未設定</option>${dueOptions}</select></label>${paid?v50Input('actualDate','実支出日',actual.date,'date'):''}`:v50Input('date',expense?'支出日':'予定日',value.date,'date')}<div class="modal-reorder"><span>同じ日付内の並び順</span><div><button data-editor="up" class="secondary-btn">▲ 上へ</button><button data-editor="down" class="secondary-btn">▼ 下へ</button></div></div>${expense?'':`<section class="fixed-payment-setting"><h3>${fixed?'この月の支払い':'支払い状態'}</h3><p>${paid?'支払済み':skipped?'支払いなし':'未払い'}</p><div class="fixed-payment-actions">${paid?'<button data-editor="rollback" class="secondary-btn">未払いに戻す</button>':skipped?'<button data-editor="restore" class="secondary-btn">支払い対象に戻す</button>':`<button data-editor="confirm" class="confirm-btn">支出に確定</button>${fixed?'<button data-editor="skip" class="secondary-btn">この月は支払わない</button>':''}`}</div></section>`}${expense&&r.origin?'<button data-editor="rollback" class="secondary-btn">未払いに戻す</button>':''}<div class="modal-actions split-actions">${fixed?'<button data-editor="delete-from" class="danger-btn">この月以降削除</button><button data-editor="delete" class="danger-btn">完全削除</button>':'<button data-editor="delete" class="danger-btn">削除</button>'}</div><div class="modal-actions"><button data-editor="cancel" class="secondary-btn">キャンセル</button><button data-editor="edit">保存</button></div>`;
   d.querySelector('[data-field="category"]').value=value.category;if(fixed)d.querySelector('[data-field="due"]').value=dueToValue(value.due);
-  const ctx={ref:M.copy(ref),el:d,orders:{},origin:originContext||{page:activePage,year:annualYear,scroll:window.scrollY,month:selectedMonth},initial:null,generation:v50Generation};ctx.initial=v50EditorValues(ctx);v50Editor=ctx;
+  const ctx={ref:M.copy(ref),el:d,orders:{},origin:originContext||{page:activePage,year:annualYear,scroll:window.scrollY,month:selectedMonth},initial:null,generation:v50Generation};ctx.initial=v50EditorValues(ctx);ctx.initialStatus=expense?(r.origin?'paid':null):paid?'paid':skipped?'skipped':'unpaid';ctx.targetStatus=ctx.initialStatus;v50Editor=ctx;v51ArrangeEditor(ctx);v51RenderPayment(ctx);
   d.addEventListener('input',()=>markDirty('v50-edit'));d.addEventListener('change',e=>{markDirty('v50-edit');if(['date','due'].includes(e.target.dataset.field)){ctx.orders={};v50Move(ctx,null);}});
   d.addEventListener('cancel',e=>{e.preventDefault();if(!v50Busy)v50CloseEditor();});d.onclick=e=>{if(e.target===d){const b=d.getBoundingClientRect();if(e.clientX<b.left||e.clientX>b.right||e.clientY<b.top||e.clientY>b.bottom){if(!v50Busy)v50CloseEditor();return;}}const b=e.target.closest('[data-editor]');if(!b||v50Busy)return;const a=b.dataset.editor;if(a==='cancel')return v50CloseEditor();if(a==='up'||a==='down')return v50Move(ctx,a);v50Perform(ctx.ref,a,ctx);};document.body.append(d);v50Move(ctx,null);d.showModal();
 }
@@ -109,7 +109,7 @@ function v50Move(ctx,dir){
   ctx.el.querySelector('[data-editor="up"]').disabled=i<=0;ctx.el.querySelector('[data-editor="down"]').disabled=i>=list.length-1;
 }
 function v50Validate(values,kind){if(!Number.isFinite(values.amount)||values.amount<=0)throw Error('金額は0円より大きい数値を入力してください。');if(!values.category?.trim())throw Error('カテゴリを選択してください。');if(kind==='fixed'){if(!M.dueOK(values.due))throw Error('支払予定日を選択してください。');if(values.actualDate&&!dateAllowed(values.actualDate))throw Error('実支出日を確認してください。');}else if(!M.date(values.date)||!dateAllowed(values.date))throw Error('日付を確認してください。');}
-async function v50Perform(ref,type,ctx=null){return v50Locked(async()=>{
+async function v50Perform(ref,type,ctx=null){if(ctx)return v51EditorAction(ctx,type);return v50Locked(async()=>{
   if(!v50Guard({...ref,...(type==='delete-from'?{onward:true}:{})}))return;
   const generation=v50Generation,origin=ctx?.origin||{page:activePage,year:annualYear,scroll:window.scrollY,month:selectedMonth};let edit=null,orders=null,actualDate=null,scope='once';const rawType=type;type=type==='delete-from'?'delete':type;
   if(ctx){let mode=type==='edit'?'save':'discard';if(type!=='edit'&&v50Changed(ctx)){
@@ -128,7 +128,7 @@ async function v50Perform(ref,type,ctx=null){return v50Locked(async()=>{
   }else if(type==='rollback'||type==='delete'){
     let text=type==='rollback'?'紐づく実支出を削除し、元の項目を未払いに戻します。':ref.kind==='expense'?(source.origin?'この実支出を削除し、元の項目を未払いに戻します。':'この実支出を削除します。'):'元の項目を削除し、対象の実支出はリンクを解除して通常の実支出として残します。';
     if(rawType==='delete-from')text=`${monthLabel(ref.month)}以降の固定費設定・未払い予定額を削除します。対象の実支出は通常の実支出として残し、それより前の履歴は維持します。`;
-    const candidate=M.commitAction(state,action);if(!await v50Dialog(type==='rollback'?'未払いに戻す':'削除の確認',`<p>${escapeHtml(text)}</p>${v50Diff(state,candidate)}${ctx&&v50Changed(ctx)&&!edit?'<p>未保存の編集内容は破棄します。</p>':''}`,[['ok','確認して実行'],['cancel','編集画面に戻る']]))return;
+    const candidate=M.commitAction(state,action);if(!await v50Dialog(type==='rollback'?'未払いに戻す':'削除の確認',v51OperationSummary(state,ref,type,action.from),[['ok',type==='rollback'?'未払いに戻す':'削除する'],['cancel','キャンセル']]))return;
   }else if(type==='edit'){
     const dest=ref.kind==='fixed'?actualDate?.slice(0,7):edit?.date?.slice(0,7),prev=ref.kind==='fixed'?state.expenses.find(e=>e.id===M.payment(source,ref.month).expenseId)?.date.slice(0,7):source.date.slice(0,7);
     if(dest&&prev&&dest!==prev&&!await v50Dialog('移動先の確認',`<p>実支出を${monthLabel(dest)}へ移動します。${ref.kind==='fixed'?'固定費の対象月は変わりません。':source.origin?.type==='fixed'?'固定費の対象月は変わりません。':'紐づく予定支出があれば一緒に移動します。'}</p>`,[['ok','保存'],['cancel','編集画面に戻る']]))return;
@@ -141,6 +141,87 @@ async function v50Perform(ref,type,ctx=null){return v50Locked(async()=>{
   if(origin.page==='annual'){annualYear=origin.year;renderAll();requestAnimationFrame(()=>window.scrollTo({top:origin.scroll,behavior:'auto'}));}
   else {if(dest!==selectedMonth)await switchMonth(dest,{force:true});else renderAll();if(keep&&dest===origin.month)v50Open(ref,origin);}
 });}
+function v51ArrangeEditor(ctx){
+  const d=ctx.el,deletion=d.querySelector('.split-actions'),save=deletion.nextElementSibling;
+  const area=document.createElement('section');area.className='v51-delete-area';area.innerHTML='<h3>削除</h3>';deletion.before(area);area.append(deletion);save.classList.add('v51-save-actions');
+  if(ctx.ref.kind==='expense'&&ctx.initialStatus){const old=d.querySelector('[data-editor="rollback"]'),section=document.createElement('section');section.className='fixed-payment-setting';old.replaceWith(section);}
+}
+function v51RenderPayment(ctx){
+  const section=ctx.el.querySelector('.fixed-payment-setting');if(!section)return;const status=ctx.targetStatus,fixed=ctx.ref.kind==='fixed',changed=status!==ctx.initialStatus;
+  const button=(action,label)=>`<button type="button" class="secondary-btn" data-editor="${action}">${label}</button>`;
+  section.innerHTML=`<h3>${fixed?'この月の支払い':'支払い状態'}</h3><p>${status==='paid'?'支払済み':status==='skipped'?'支払いなし':'未払い'}${changed?'（未保存）':''}</p><div class="fixed-payment-actions">${status==='paid'?button('rollback','未払いに戻す'):status==='skipped'?button('restore','支払い対象に戻す'):button('confirm','支出に確定')+(fixed?button('skip','この月は支払わない'):'')}</div>${changed?'<p class="v51-pending">［保存］で反映します。</p>':''}`;
+  if(fixed){const input=ctx.el.querySelector('[data-field="amount"]');input.parentElement.firstChild.textContent=status==='paid'?'実際の支払額':'金額';}
+}
+function v51OperationSummary(s,ref,type,from=null){
+  const source=ref.kind==='expense'?s.expenses.find(e=>e.id===ref.id):M.findSource(s,ref);
+  const origin=ref.kind==='expense'?source.origin:ref.kind==='fixed'?{type:'fixed',sourceId:ref.id,sourceMonth:ref.month}:{type:'planned',sourceId:ref.id};
+  const actual=ref.kind==='expense'?source:s.expenses.find(e=>e.id===(ref.kind==='fixed'?M.payment(source,ref.month).expenseId:source.confirmedExpenseId));
+  const savedActual=actual&&(state.expenses.find(e=>e.id===actual.id)||actual);
+  const value=ref.kind==='fixed'?M.config(source,ref.month):source;
+  const card=v=>`<p class="v51-target"><strong>${escapeHtml(v.memo||v.category||'記録')}</strong><br>${yen(v.amount)}${v.date?` ／ 支払日 ${escapeHtml(v.date)}`:''}</p>`;
+  if(type==='rollback'||ref.kind==='expense'&&source.origin){
+    const fixed=origin.type==='fixed',target=fixed?origin.sourceMonth:actual.date.slice(0,7),actualMonth=savedActual.date.slice(0,7);
+    return card(savedActual)+`<p>この支払いの実支出記録を取り消し、${escapeHtml(monthLabel(target))}の${fixed?'固定費':'予定支出'}を未払いに戻します。</p><p>${escapeHtml(monthLabel(actualMonth))}の支出合計から${yen(savedActual.amount)}を除き、${escapeHtml(monthLabel(target))}の未払い予定額に${yen(actual.amount)}を戻します。</p>${fixed?'<p>翌月以降の固定費設定は変更しません。</p>':''}`;
+  }
+  if(ref.kind==='expense')return card(savedActual)+`<p>この支出を削除し、${escapeHtml(monthLabel(savedActual.date.slice(0,7)))}の支出合計から${yen(savedActual.amount)}を除きます。</p>`;
+  const linked=s.expenses.filter(e=>e.origin?.type===ref.kind&&e.origin.sourceId===ref.id&&(!from||e.origin.sourceMonth>=from));
+  return card({...value,date:ref.kind==='fixed'?M.scheduledDate(ref.month,value.due):value.date})+`<p>${ref.kind==='fixed'?(from?escapeHtml(monthLabel(from))+'以降の固定費設定を削除します。それより前の履歴は残します。':'この固定費を全期間から削除します。'):'この予定支出を削除します。'}対象の未払い予定額も集計から除きます。</p>${linked.length?`<p>支払済みの実支出${linked.length}件（合計${yen(linked.reduce((n,e)=>n+e.amount,0))}）は通常の支出として残します。支出合計・支払日は変更しません。</p>`:''}`;
+}
+async function v51PrepareEditor(ctx){
+  const ref=ctx.ref,values=v50EditorValues(ctx);v50Validate(values,ref.kind);
+  const edit=Object.fromEntries(Object.entries(values).filter(([k,v])=>k!=='actualDate'&&!M.equal(v,ctx.initial[k])));let scope='once';
+  if(ref.kind==='fixed'&&ctx.initialStatus!=='paid'&&Object.keys(edit).length){
+    const answer=await v50Dialog('変更の適用範囲','<label class="v50-check"><input type="radio" name="scope" value="once" checked>この月だけ</label><label class="v50-check"><input type="radio" name="scope" value="onward">この月以降</label>',[['ok','この範囲で続ける'],['cancel','キャンセル']],d=>d.querySelector('[name="scope"]:checked').value);if(!answer)return null;scope=answer.value;
+  }
+  const action={ref:{...ref,...(scope==='onward'?{onward:true}:{})},type:'edit',edit,orders:ctx.orders,actualDate:values.actualDate,scope};
+  let candidate=M.commitAction(state,action);
+  const original=ref.kind==='expense'?state.expenses.find(e=>e.id===ref.id):M.findSource(state,ref);
+  const sourceRef=ref.kind==='expense'&&original.origin?{kind:original.origin.type,id:original.origin.sourceId,month:original.origin.sourceMonth}:ref;
+  if(ctx.targetStatus!==ctx.initialStatus){
+    if(ctx.initialStatus==='paid'){
+      if(!await v50Dialog('未払いに戻す',v51OperationSummary(candidate,ref,'rollback')+(ctx.targetStatus==='skipped'?'<p>その後、この対象月を「支払いなし」にします。</p>':''),[['ok','未払いに戻す'],['cancel','キャンセル']]))return null;
+      candidate=M.commitAction(candidate,{ref:sourceRef,type:'rollback'});
+    }
+    if(ctx.targetStatus==='paid'){
+      if(ctx.initialStatus==='skipped')candidate=M.commitAction(candidate,{ref:sourceRef,type:'restore'});
+      const r=M.findSource(candidate,sourceRef),v=sourceRef.kind==='fixed'?M.config(r,sourceRef.month):r;
+      const date=sourceRef.kind==='fixed'?(M.payment(r,sourceRef.month).lastActualDate||M.scheduledDate(sourceRef.month,v.due)):v.date;
+      const answer=await v50Dialog('支出に確定',v50Input('amount','実際の支払額',v.amount,'number')+v50Input('date','実支出日',date,'date')+`<p>${sourceRef.kind==='fixed'?`固定費は${escapeHtml(monthLabel(sourceRef.month))}に残り、実支出は実支出日の月に計上します。`:'確認した金額・日付を予定支出にも反映します。月が変わる場合は両方を移動します。'}</p>`,[['ok','支出に確定'],['cancel','キャンセル']],d=>{const amount=Number(d.querySelector('[data-field="amount"]').value),date=d.querySelector('[data-field="date"]').value;if(!Number.isFinite(amount)||amount<=0||!M.date(date)||!dateAllowed(date))throw Error('実際の支払額と日付を確認してください。');return {amount,date};});if(!answer)return null;
+      candidate=M.commitAction(candidate,{ref:sourceRef,type:'confirm',...answer.value,expenseId:newId('e')});
+    }else if(ctx.targetStatus==='skipped')candidate=M.commitAction(candidate,{ref:sourceRef,type:'skip'});
+    else if(ctx.initialStatus==='skipped')candidate=M.commitAction(candidate,{ref:sourceRef,type:'restore'});
+  }else{
+    const dest=ref.kind==='fixed'?values.actualDate?.slice(0,7):values.date.slice(0,7),previous=ref.kind==='fixed'?ctx.initial.actualDate?.slice(0,7):ctx.initial.date.slice(0,7);
+    if(dest&&previous&&dest!==previous&&!await v50Dialog('移動先の確認',`<p>${escapeHtml(monthLabel(dest))}へ移動します。${ref.kind==='fixed'||original.origin?.type==='fixed'?'固定費の元の対象月は変更しません。':'紐づく予定支出・実支出があれば一緒に移動します。'}</p>`,[['ok','保存'],['cancel','キャンセル']]))return null;
+  }
+  return candidate;
+}
+function v51EditorAction(ctx,type){
+  if(v50Busy)return;
+  if(['confirm','rollback','skip','restore'].includes(type)){ctx.targetStatus=({confirm:'paid',rollback:'unpaid',skip:'skipped',restore:'unpaid'})[type];v51RenderPayment(ctx);markDirty('v50-edit');return;}
+  return v50Locked(async()=>{
+    if(ctx!==v50Editor||ctx.generation!==v50Generation)throw Error('編集中にデータが変わりました。開き直してください。');
+    const ref=ctx.ref,original=ref.kind==='expense'?state.expenses.find(e=>e.id===ref.id):M.findSource(state,ref);let candidate;
+    if(type==='edit')candidate=await v51PrepareEditor(ctx);
+    else if(['delete','delete-from'].includes(type)){
+      let save=false;if(v50Changed(ctx)){const answer=await v50Dialog('未保存の変更があります','<p>削除の確認が完了するまで、保存・削除は行いません。</p>',[['save','保存して削除'],['discard','破棄して削除'],['cancel','編集画面に戻る']]);if(!answer)return;save=answer.choice==='save';}
+      candidate=save?await v51PrepareEditor(ctx):M.copy(state);if(!candidate)return;
+      const gone=ref.kind==='expense'&&!candidate.expenses.some(e=>e.id===ref.id);
+      const body=gone?'<p>この実支出は、選択した「未払いに戻す」で取り消されます。元の項目を未払いに戻して保存します。</p>':v51OperationSummary(candidate,ref,'delete',type==='delete-from'?ref.month:null);
+      const result=gone?candidate:M.commitAction(candidate,{ref,type:'delete',...(type==='delete-from'?{from:ref.month}:{})});
+      const months=[...new Set([...state.expenses,...result.expenses].map(e=>e.date.slice(0,7)))].sort(),sum=(s,m)=>s.expenses.filter(e=>e.date.startsWith(m)).reduce((a,e)=>a+e.amount,0);
+      const impact=months.filter(m=>sum(state,m)!==sum(result,m)).map(m=>`<p>${escapeHtml(monthLabel(m))}の支出合計：${yen(sum(state,m))} → ${yen(sum(result,m))}</p>`).join('');
+      if(!await v50Dialog('削除の確認',body+impact+(save?'<p>選択した未保存の変更も合わせて保存します。</p>':v50Changed(ctx)?'<p>未保存の入力・支払い状態の変更は破棄します。</p>':''),[['ok','削除する'],['cancel','キャンセル']]))return;
+      candidate=result;
+    }else return;
+    if(!candidate)return;if(ctx!==v50Editor||ctx.generation!==v50Generation)throw Error('確認中にデータが変わりました。開き直してください。');
+    v50Accept(candidate);v50CloseEditor();const origin=ctx.origin;let dest=origin.month;
+    if(ref.kind==='planned')dest=M.findSource(state,ref)?.date.slice(0,7)||dest;
+    if(ref.kind==='expense'){const e=state.expenses.find(e=>e.id===ref.id);dest=e?e.date.slice(0,7):original.origin?.type==='fixed'?original.origin.sourceMonth:original.origin?.type==='planned'?M.findSource(state,{kind:'planned',id:original.origin.sourceId})?.date.slice(0,7)||dest:dest;}
+    if(origin.page==='annual'){annualYear=origin.year;renderAll();requestAnimationFrame(()=>window.scrollTo({top:origin.scroll,behavior:'auto'}));}
+    else if(dest!==selectedMonth)await switchMonth(dest,{force:true});else renderAll();
+  });
+}
 openEdit=(id)=>v50Open({kind:'expense',id:String(id)});openPlannedEdit=id=>v50Open({kind:'planned',id:String(id)});openFixedEdit=id=>v50Open({kind:'fixed',id:String(id),month:selectedMonth});
 confirmPlanned=id=>v50Perform({kind:'planned',id:String(id)},'confirm');confirmFixed=id=>v50Perform({kind:'fixed',id:String(id),month:selectedMonth},'confirm');
 function v50Diff(before,after){
