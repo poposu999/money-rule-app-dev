@@ -1,4 +1,4 @@
-const VERSION="49.14";
+const VERSION="50.1";
 const SCHEMA_VERSION=50;
 const PROD_STORAGE_KEYS={state:"moneyRuleAppV2",sections:"moneyRuleSectionPrefs",stats:"moneyRuleStatPrefs"};
 const LEGACY_STORAGE_KEYS={state:"moneyRuleDevAppV2",sections:"moneyRuleDevSectionPrefs",stats:"moneyRuleDevStatPrefs"};
@@ -342,7 +342,7 @@ function setText(id,text){const el=$(id);if(el)el.textContent=text;}
 function setHidden(id,hidden){$(id)?.classList.toggle("hidden",Boolean(hidden));}
 function contextTitle(base){return isCurrentSelected()?`今月の${base}`:`${monthLabel(selectedMonth)}の${base}`;}
 function updateDynamicTitles(){
-  setText("budgetTitle",contextTitle("予算"));setText("expenseListTitle",contextTitle("支出"));setText("plannedListTitle",contextTitle("予定支出"));setText("statsTitle",contextTitle("内訳"));
+  setText("budgetTitle","今月の予算状況");setText("expenseListTitle",contextTitle("支出"));setText("plannedListTitle",contextTitle("予定支出"));setText("statsTitle",contextTitle("内訳"));
   setText("expenseEntryHeading",isCurrentSelected()?"今月の支出を追加":`${monthLabel(selectedMonth)}の支出を追加`);
   setText("plannedEntryHeading",isCurrentSelected()?"今月の予定支出を追加":`${monthLabel(selectedMonth)}の予定支出を追加`);
   setText("fixedEntryHeading",isCurrentSelected()?"今月から固定費を開始":`${monthLabel(selectedMonth)}から固定費を開始`);
@@ -393,35 +393,71 @@ function renderMonthGrid(year){
   $("yearList").querySelectorAll(".year-btn").forEach(b=>b.classList.toggle("active",Number(b.dataset.year)===selectedPickerYear));
 }
 
+// Display-only allocation: the underlying budget and saved values are unchanged.
+function renderBudgetAllocation(n){
+  const planned=n.plannedAmount+n.unpaidFixedAmount;
+  let actualWidth=0,plannedWidth=0,remainingWidth=0;
+  if(n.calculable&&n.spendingBudget>0){
+    actualWidth=Math.min(100,Math.max(0,n.spent/n.spendingBudget*100));
+    plannedWidth=Math.min(100-actualWidth,Math.max(0,planned/n.spendingBudget*100));
+    remainingWidth=n.remaining>0?Math.max(0,100-actualWidth-plannedWidth):0;
+  }
+  $("budgetActualSegment").style.width=actualWidth+"%";
+  $("budgetPlannedSegment").style.width=plannedWidth+"%";
+  $("budgetRemainingSegment").style.width=remainingWidth+"%";
+  setText("budgetActualValue",yen(n.spent));
+  setText("budgetPlannedValue",yen(planned));
+  setText("budgetRemainingValue",n.calculable?yen(Math.max(0,n.remaining)):"—");
+  const description=!n.calculable?"予算未計算":n.spendingBudget<=0?"予算上限が0円以下のため割合は表示しません":`予算上限 ${yen(n.spendingBudget)}`;
+  $("budgetAllocation").setAttribute("aria-label",`${description}。実支出 ${yen(n.spent)}、支払い予定 ${yen(planned)}、残り予算 ${n.calculable?yen(Math.max(0,n.remaining)):"未計算"}`);
+}
 function renderBudgetDashboard(){
   const n=getBudgetData(selectedMonth),past=isPastSelected(),future=isFutureSelected();
+  // These existing detail-card updates share this renderer and must be retained.
   setText("spentAmountView",yen(n.spent));setText("plannedExpenseView",yen(n.plannedAmount));setText("fixedPendingView",yen(n.unpaidFixedAmount));setText("incomeView",n.rec?.income?.entered?yen(n.rec.income.value):"未入力");
-  const dailyWrap=$("dashboardDailyWrap"),todayLabel=$("todayLabel"),paceScale=$("paceScale");
-  if(past&&(!n.settings||!n.incomeEntered)){
-    setText("dashboardRemaining","未計算");setText("dashboardRemainingNote","過去月の予算は未計算");setText("dashboardDailyBudget","未計算");setText("dashboardDailyDays","");setText("spendingBudget","未計算");setText("plannedSavings","未計算");setText("extraIncome","未計算");setText("budgetLimitValue","—");setText("budgetSpentValue",yen(n.spent+n.plannedAmount+n.unpaidFixedAmount));setText("dashboardStatusLabel","未計算");setText("dashboardStatusMessage","この月は予算計算に必要な情報が未設定です。");$("dashboardStatus").className="budget-status neutral";dailyWrap.classList.add("hidden");todayLabel.classList.add("hidden");renderPaceTimeline(null,null);return;
+  setHidden("dashboardDailyWrap",past);
+  document.querySelector(".budget-overview").classList.toggle("without-daily",past);
+  renderBudgetAllocation(n);
+  const status=(level,label,message="")=>{
+    setText("dashboardStatusLabel",label);setText("dashboardStatusMessage",message);
+    $("dashboardStatus").className=`budget-status ${level}`;
+  };
+  if(!n.calculable){
+    setText("budgetHeroPrefix","未計算");$("budgetStateDot").className="budget-state-dot neutral";
+    setText("dashboardRemaining","—");setText("dashboardDailyBudget","—");setText("dashboardDailyDays","");
+    setText("spendingBudget","未計算");setText("plannedSavings","未計算");setText("extraIncome","未計算");
+    status("neutral","未計算",past?"この月は予算計算に必要な情報が未設定です。":!n.settings?"家計ルールを入力してください。":"収入を入力してください。");
+    return;
   }
-  if(!n.settings){
-    setText("dashboardRemaining","未計算");setText("dashboardRemainingNote","家計ルールを入力してください");setText("dashboardDailyBudget","未計算");setText("dashboardDailyDays","");setText("spendingBudget","未計算");setText("plannedSavings","未計算");setText("extraIncome","未計算");setText("budgetLimitValue","—");setText("budgetSpentValue",yen(n.spent));setText("dashboardStatusLabel","家計ルール未設定");setText("dashboardStatusMessage","家計ルールを入力してください。");$("dashboardStatus").className="budget-status neutral";dailyWrap.classList.toggle("hidden",past);todayLabel.classList.add("hidden");renderPaceTimeline(null,null);return;
+  const shortage=n.spendingBudget<0,over=n.remaining<0;
+  setText("spendingBudget",yen(n.spendingBudget));setText("plannedSavings",yen(n.plannedSavings));setText("extraIncome",yen(n.extra));
+  setText("budgetHeroPrefix",shortage?"予算不足":over?"予算超過":"残り予算");
+  $("budgetStateDot").className=`budget-state-dot ${shortage?'warning':over?'danger':'good'}`;
+  setText("dashboardRemaining",yen(over?-n.remaining:n.remaining));
+  const overMessage="自由に使える予算を超えています";
+  if(shortage){
+    status("warning","予算不足","貯金予定額が収入を上回っています");
+    if(past)return;
   }
-  if(!n.incomeEntered){
-    setText("dashboardRemaining","収入を入力してください");setText("dashboardRemainingNote","収入を入力してください");setText("dashboardDailyBudget","未計算");setText("dashboardDailyDays","");setText("spendingBudget","未計算");setText("plannedSavings","未計算");setText("extraIncome","未計算");setText("budgetLimitValue","—");setText("budgetSpentValue",yen(n.spent));setText("dashboardStatusLabel",future?"収入未入力":"収入を入力してください");setText("dashboardStatusMessage",future?"収入入力後に予測します。":"予算結果は収入入力後に計算します。");$("dashboardStatus").className="budget-status neutral";dailyWrap.classList.toggle("hidden",past);todayLabel.classList.add("hidden");renderPaceTimeline(null,null);return;
+  if(past){status(over?"danger":"good",over?"予算超過":"予算内",over?overMessage:"");return;}
+  const last=daysInMonth(selectedMonth),day=new Date().getDate(),days=future?last:last-day+1;
+  setText("dashboardDailyBudget",`${yen(Math.max(0,n.remaining)/Math.max(1,days))} / 日`);
+  setText("dashboardDailyDays",future?`（${days}日間）`:`（残り${days}日）`);
+  if(shortage)return;
+  if(future){
+    // Preserve the existing future-month status decision, including its zero-use case.
+    const used=n.spent+n.plannedAmount+n.unpaidFixedAmount;
+    status(used===0?"good":over?"danger":"good",used===0?"予算内":over?"予算超過":"予算内",over?overMessage:used===0?"現時点の支出予定はありません":"");
+    return;
   }
-  setText("spendingBudget",yen(n.spendingBudget));setText("plannedSavings",yen(n.plannedSavings));setText("extraIncome",yen(n.extra));setText("dashboardRemaining",yen(n.remaining));
-  let note="現在の残り予算";if(n.plannedAmount&&n.unpaidFixedAmount)note=`（予定支出 ${yen(n.plannedAmount)}・未払い固定費 ${yen(n.unpaidFixedAmount)} を差し引き済み）`;else if(n.plannedAmount)note=`（予定支出 ${yen(n.plannedAmount)} を差し引き済み）`;else if(n.unpaidFixedAmount)note=`（未払い固定費 ${yen(n.unpaidFixedAmount)} を差し引き済み）`;setText("dashboardRemainingNote",note);
-  const setPaceMeter=(used,limit)=>{const raw=limit>0?used/limit*100:used>0?100:0,pct=Math.max(0,Math.min(100,Number.isFinite(raw)?raw:0));setText("budgetLimitValue",yen(limit));setText("budgetSpentValue",yen(used));$("budgetProgressBar").style.width=pct+"%";const pos=$("budgetSpentPosition");pos.style.left=pct+"%";pos.className=`pace-spent-position${pct<10?' left-edge':pct>90?' right-edge':''}`;};
-  if(past){setPaceMeter(n.spent+n.plannedAmount+n.unpaidFixedAmount,n.spendingBudget);dailyWrap.classList.add("hidden");todayLabel.classList.add("hidden");renderPaceTimeline(null,null);const used=n.spent+n.plannedAmount+n.unpaidFixedAmount,over=used>n.spendingBudget;setText("dashboardStatusLabel",over?"予算超過":"予算内");setText("dashboardStatusMessage",over?`予算を${yen(used-n.spendingBudget)}超えています。`:"現在の登録内容は予算内です。");$("dashboardStatus").className=`budget-status ${over?'danger':'good'}`;return;}
-  dailyWrap.classList.remove("hidden");
-  if(future){setPaceMeter(n.spent+n.plannedAmount+n.unpaidFixedAmount,n.spendingBudget);todayLabel.classList.add("hidden");renderPaceTimeline(null,null);const days=daysInMonth(selectedMonth);setText("dashboardDailyBudget",`${yen(n.remaining/days)} / 日`);setText("dashboardDailyDays",`（${days}日間）`);const used=n.spent+n.plannedAmount+n.unpaidFixedAmount,over=used>n.spendingBudget;if(used===0){setText("dashboardStatusLabel","予算内");setText("dashboardStatusMessage","現時点の支出予定はありません");$("dashboardStatus").className="budget-status good";}else{setText("dashboardStatusLabel",over?"予算超過":"予算内");setText("dashboardStatusMessage",over?`予定を含めると予算を${yen(used-n.spendingBudget)}超えます。`:"実支出・予定支出・未払い固定費を含めても予算内です。");$("dashboardStatus").className=`budget-status ${over?'danger':'good'}`;}return;}
-  const meterUsed=n.spent+n.plannedAmount+n.unpaidFixedAmount;setPaceMeter(meterUsed,n.spendingBudget);
-  const today=new Date(),last=daysInMonth(selectedMonth),day=today.getDate(),remainingDays=last-day+1;setText("dashboardDailyBudget",`${yen(n.remaining/Math.max(1,remainingDays))} / 日`);setText("dashboardDailyDays",`（残り${remainingDays}日）`);todayLabel.classList.remove("hidden");renderPaceTimeline(day,last);
-  let level="good",label="順調なペース この調子！",msg="自由に使える予算内のペースです。";
-  if(n.freeBudget<0){level="danger";label="予定支出を含めると予算超過です";msg=`確保済み支出だけで予算を${yen(Math.abs(n.freeBudget))}超えています。`;}
-  else if(n.freeBudget===0){level="warning";label="予定している支出だけで予算上限に達しています";msg="自由に使える予算は残っていません。";}
-  else if(n.freeSpend>n.freeBudget){level="danger";label="自由に使える予算を超過しています";msg=`自由支出が予算を${yen(n.freeSpend-n.freeBudget)}超えています。`;}
-  else if(n.freeSpend>0){const projected=n.freeSpend/Math.max(1,day)*last;if(projected>n.freeBudget){level="warning";label="使いすぎ注意";msg=`このペースだと自由支出が月末に${yen(projected-n.freeBudget)}予算を超える見込みです。`;}}
-  setText("dashboardStatusLabel",label);setText("dashboardStatusMessage",msg);$("dashboardStatus").className=`budget-status ${level}`;
+  let level="good",label="順調なペース この調子！",msg="";
+  if(n.freeBudget<0){level="danger";label="予定支出を含めると予算超過です";}
+  else if(n.freeBudget===0){level="warning";label="予定している支出だけで予算上限に達しています";}
+  else if(n.freeSpend>n.freeBudget){level="danger";label="自由に使える予算を超過しています";}
+  else if(n.freeSpend>0){const projected=n.freeSpend/Math.max(1,day)*last;if(projected>n.freeBudget){level="warning";label="使いすぎ注意";msg="このペースでは予算超過の見込みです。";}}
+  if(over)msg=overMessage;
+  status(level,label,msg);
 }
-function renderPaceTimeline(day,last){const labels=$("progressTimelineLabels");if(!labels)return;if(!day||!last){labels.innerHTML="";return;}const vals=[0,10,20,last];labels.innerHTML=vals.map((v,i)=>`<span class="timeline-label timeline-label-${i}" style="left:${Math.min(100,Math.max(0,v/last*100))}%">${i===3?'月末':v+'日'}</span>`).join("");const pct=Math.min(100,Math.max(0,day/last*100));$("todayLabel").style.left=pct+"%";$("todayLabel").className=`today-label${pct<8?' left-edge':pct>92?' right-edge':''}`;}
 function renderValidation(){const n=getBudgetData(selectedMonth),el=$("inputValidation"),issues=[];if(!n.settings){el.classList.add("hidden");return;}if(n.settings.extraAllowancePercent+n.settings.extraSavingsPercent!==100)issues.push(`超過分の割合が合計${n.settings.extraAllowancePercent+n.settings.extraSavingsPercent}%です（100%にしてください）`);if(n.calculable&&n.plannedSavings>n.totalIncome)issues.push(`貯金予定${yen(n.plannedSavings)}が総収入${yen(n.totalIncome)}を上回っています`);if(n.settings.minimumTakeHome<n.settings.savingsTarget)issues.push(`最低限の手取り${yen(n.settings.minimumTakeHome)}より貯金目標${yen(n.settings.savingsTarget)}のほうが大きくなっています`);if(!issues.length){el.classList.add("hidden");return;}el.textContent="⚠️ "+issues.join(" / ");el.className="validation-warning";}
 
 function rowHtml(item,kind){

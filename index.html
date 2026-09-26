@@ -8,13 +8,13 @@
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)"/>
 <meta name="theme-color" content="#111418" media="(prefers-color-scheme: dark)"/>
 <link rel="manifest" href="manifest.json"/>
-<link href="style.css?v=49.14" rel="stylesheet"/>
-<link href="workflow.css?v=49.14" rel="stylesheet"/>
+<link href="style.css?v=50.1" rel="stylesheet"/>
+<link href="workflow.css?v=50.1" rel="stylesheet"/>
 </head>
 <body>
 <div class="dev-environment-banner" role="status">検証環境</div>
 <main class="container" id="appRoot">
-  <header class="app-header"><h1>家計簿 <span class="header-version">ver.49.14</span></h1><button id="openAppMenu" class="secondary-btn menu-toggle" type="button" aria-label="メニューを開く" aria-expanded="false" aria-controls="appMenu">☰</button></header>
+  <header class="app-header"><h1>家計簿 <span class="header-version">ver.50.1</span></h1><button id="openAppMenu" class="secondary-btn menu-toggle" type="button" aria-label="メニューを開く" aria-expanded="false" aria-controls="appMenu">☰</button></header>
   <div id="appMenuOverlay" class="menu-overlay hidden">
     <nav id="appMenu" class="app-menu" aria-label="メインメニュー">
       <div class="modal-header"><h2>メニュー</h2><button id="closeAppMenu" class="close-btn" type="button" aria-label="メニューを閉じる">×</button></div>
@@ -36,27 +36,30 @@
     <div id="monthContextWarning" class="month-context-warning hidden"></div>
   </section>
   <section class="card budget-dashboard" data-section-content="progress">
-    <div class="section-title budget-dashboard-title"><h2 id="budgetTitle">今月の予算</h2><button class="minus-btn" data-section="progress">−</button></div>
-    <div class="budget-hero">
-      <span class="budget-hero-prefix" id="budgetHeroPrefix">今月残り</span>
-      <strong id="dashboardRemaining">—</strong>
-      <span class="budget-hero-suffix">使える</span>
-    </div>
-    <span class="budget-hero-note" id="dashboardRemainingNote">収入を入力してください</span>
-    <div class="budget-daily-guide" id="dashboardDailyWrap">
-      <span>1日あたりの目安</span>
-      <strong id="dashboardDailyBudget">—</strong>
-      <small id="dashboardDailyDays"></small>
-    </div>
-    <div class="pace-compare">
-      <div class="pace-unified">
-        <div class="pace-summary-line"><span>支出ペース</span><span class="pace-limit">上限 <strong id="budgetLimitValue">—</strong></span></div>
-        <div class="pace-spent-row"><div class="pace-spent-position" id="budgetSpentPosition"><strong id="budgetSpentValue">¥0</strong><span class="pace-spent-arrow" aria-hidden="true">▼</span></div></div>
-        <div class="pace-track-wrap"><div class="pace-bar pace-spending"><div id="budgetProgressBar"></div></div></div>
-        <div class="pace-scale" id="paceScale"><div class="today-label" id="todayLabel"><span aria-hidden="true">▲</span><strong>Today</strong></div><div class="progress-timeline-labels" id="progressTimelineLabels"></div></div>
+    <div class="section-title budget-dashboard-title"><h2 id="budgetTitle">今月の予算状況</h2><button class="minus-btn" data-section="progress">−</button></div>
+    <div class="budget-overview">
+      <div class="budget-hero">
+        <span class="budget-hero-prefix"><i id="budgetStateDot" class="budget-state-dot neutral" aria-hidden="true"></i><span id="budgetHeroPrefix">未計算</span></span>
+        <strong id="dashboardRemaining">—</strong>
+      </div>
+      <div class="budget-daily-guide" id="dashboardDailyWrap">
+        <span>1日あたりの予算</span>
+        <strong id="dashboardDailyBudget">—</strong>
+        <small id="dashboardDailyDays"></small>
       </div>
     </div>
-    <div class="budget-status neutral" id="dashboardStatus"><strong id="dashboardStatusLabel">データ待ち</strong><span id="dashboardStatusMessage">収入を入力すると判定します。</span></div>
+    <div class="budget-allocation" id="budgetAllocation" role="img" aria-label="予算未計算">
+      <span id="budgetActualSegment" class="budget-segment budget-actual"></span>
+      <span id="budgetPlannedSegment" class="budget-segment budget-planned"></span>
+      <span id="budgetRemainingSegment" class="budget-segment budget-remaining"></span>
+    </div>
+    <div class="budget-breakdown">
+      <div><span><i class="budget-swatch budget-actual" aria-hidden="true"></i>実支出</span><strong id="budgetActualValue">¥0</strong></div>
+      <div><span><i class="budget-swatch budget-planned" aria-hidden="true"></i>支払い予定</span><strong id="budgetPlannedValue">¥0</strong></div>
+      <div><span><i class="budget-swatch budget-remaining" aria-hidden="true"></i>残り予算</span><strong id="budgetRemainingValue">—</strong></div>
+    </div>
+    <div class="budget-status neutral" id="dashboardStatus"><strong id="dashboardStatusLabel">未計算</strong><span id="dashboardStatusMessage">収入・家計ルールを入力してください。</span></div>
+    <div id="budgetIntegrityNotice"></div>
   </section>
   <section class="card stats" data-section-content="stats">
     <div class="section-title full"><h2 id="statsTitle">今月の内訳</h2><button class="minus-btn" data-section="stats">−</button></div>
@@ -306,11 +309,11 @@
 
   <div id="memoPopup" class="memo-popup hidden" role="status"></div>
   <button id="recordButton" class="record-fab" type="button" data-open-record="expense">＋ 記録</button>
-  <footer class="app-footer"><h1>家計簿 <span class="app-version">ver.49.14</span></h1><p>編集操作の改善・検証版</p></footer>
+  <footer class="app-footer"><h1>家計簿 <span class="app-version">ver.50.1</span></h1><p>ホーム予算表示の改善・検証版</p></footer>
 </main>
-<script src="model.js?v=49.14"></script>
-<script src="app.js?v=49.14"></script>
-<script src="workflow.js?v=49.14"></script>
+<script src="model.js?v=50.1"></script>
+<script src="app.js?v=50.1"></script>
+<script src="workflow.js?v=50.1"></script>
 <script>
 if ("serviceWorker" in navigator) {
   let reloading = false;
