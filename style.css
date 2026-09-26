@@ -251,7 +251,7 @@ input[type="date"]::-webkit-datetime-edit-fields-wrapper{
 .table-actions .fixed-status-label:disabled{opacity:1;cursor:default}
 
 /* Issue #1: compact budget card; theme tokens are scoped to this card. */
-.budget-dashboard{--budget-actual:#343a43;--budget-planned:#888e97;--budget-remaining:#d9dde2;--budget-outline:#cfd4da;--budget-text:#202124;--budget-muted:#68717b;--budget-good:#18794e;--budget-danger:#b42318;text-align:left}
+.budget-dashboard{--budget-actual:#343a43;--budget-planned:#888e97;--budget-remaining:#d9dde2;--budget-outline:#cfd4da;--budget-text:#202124;--budget-muted:#68717b;--budget-good:#18794e;--budget-danger:#b42318;--budget-warning:#8a5a00;text-align:left}
 .budget-dashboard .budget-dashboard-title{margin-bottom:12px}
 .budget-dashboard .budget-dashboard-title h2{color:var(--budget-text)}
 .budget-overview{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:12px;align-items:center;margin-bottom:14px}
@@ -260,7 +260,7 @@ input[type="date"]::-webkit-datetime-edit-fields-wrapper{
 .budget-dashboard .budget-hero-prefix{display:flex;align-items:center;gap:6px;color:var(--budget-text);font-size:13px}
 .budget-dashboard .budget-hero strong{font-size:clamp(24px,6.5vw,40px);letter-spacing:-1px;line-height:1.12;color:var(--budget-text);max-width:100%;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
 .budget-state-dot,.budget-swatch{display:inline-block;width:11px;height:11px;border-radius:50%;flex:none}
-.budget-state-dot.good{background:var(--budget-good)}.budget-state-dot.danger{background:var(--budget-danger)}.budget-state-dot.neutral{background:var(--budget-muted)}
+.budget-state-dot.good{background:var(--budget-good)}.budget-state-dot.danger{background:var(--budget-danger)}.budget-state-dot.warning{background:var(--budget-warning)}.budget-state-dot.neutral{background:var(--budget-muted)}
 .budget-dashboard .budget-daily-guide{display:flex;flex-direction:column;justify-content:center;gap:5px;margin:0;padding:10px 6px;min-width:0;text-align:center}
 .budget-dashboard .budget-daily-guide>span{font-size:11px}
 .budget-dashboard .budget-daily-guide strong{font-size:clamp(16px,4.3vw,24px);color:var(--budget-text);text-align:center;max-width:100%;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
@@ -279,5 +279,5 @@ input[type="date"]::-webkit-datetime-edit-fields-wrapper{
 .budget-dashboard #v50-budget-warning{display:block;width:100%;margin-top:8px;text-align:left;white-space:normal;overflow-wrap:anywhere}
 .budget-dashboard #v50-budget-warning[hidden]{display:none}
 @media(prefers-color-scheme:dark){
-  .budget-dashboard{--budget-actual:#565f6c;--budget-planned:#929aa5;--budget-remaining:#cbd1d9;--budget-outline:#707986;--budget-text:#eef1f4;--budget-muted:#aab2bc;--budget-good:#85d8a7;--budget-danger:#f0a0a5}
+  .budget-dashboard{--budget-actual:#565f6c;--budget-planned:#929aa5;--budget-remaining:#cbd1d9;--budget-outline:#707986;--budget-text:#eef1f4;--budget-muted:#aab2bc;--budget-good:#85d8a7;--budget-danger:#f0a0a5;--budget-warning:#e6c36a}
 }

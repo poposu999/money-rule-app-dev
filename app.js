@@ -429,16 +429,21 @@ function renderBudgetDashboard(){
     status("neutral","未計算",past?"この月は予算計算に必要な情報が未設定です。":!n.settings?"家計ルールを入力してください。":"収入を入力してください。");
     return;
   }
-  const over=n.remaining<0;
+  const shortage=n.spendingBudget<0,over=n.remaining<0;
   setText("spendingBudget",yen(n.spendingBudget));setText("plannedSavings",yen(n.plannedSavings));setText("extraIncome",yen(n.extra));
-  setText("budgetHeroPrefix",over?"予算超過":"残り予算");
-  $("budgetStateDot").className=`budget-state-dot ${over?'danger':'good'}`;
+  setText("budgetHeroPrefix",shortage?"予算不足":over?"予算超過":"残り予算");
+  $("budgetStateDot").className=`budget-state-dot ${shortage?'warning':over?'danger':'good'}`;
   setText("dashboardRemaining",yen(over?-n.remaining:n.remaining));
   const overMessage="自由に使える予算を超えています";
+  if(shortage){
+    status("warning","予算不足","貯金予定額が収入を上回っています");
+    if(past)return;
+  }
   if(past){status(over?"danger":"good",over?"予算超過":"予算内",over?overMessage:"");return;}
   const last=daysInMonth(selectedMonth),day=new Date().getDate(),days=future?last:last-day+1;
   setText("dashboardDailyBudget",`${yen(Math.max(0,n.remaining)/Math.max(1,days))} / 日`);
   setText("dashboardDailyDays",future?`（${days}日間）`:`（残り${days}日）`);
+  if(shortage)return;
   if(future){
     // Preserve the existing future-month status decision, including its zero-use case.
     const used=n.spent+n.plannedAmount+n.unpaidFixedAmount;
