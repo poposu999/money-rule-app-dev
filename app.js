@@ -396,7 +396,7 @@ function renderMonthGrid(year){
 // Display-only allocation: the underlying budget and saved values are unchanged.
 function renderBudgetAllocation(n){
   const planned=n.plannedAmount+n.unpaidFixedAmount;
-  $("budgetEmptyLabel").hidden=!(n.calculable&&n.spendingBudget<=0);
+  $("budgetEmptyLabel").hidden=!(n.calculable&&n.spendingBudget<0);
   let actualWidth=0,plannedWidth=0,remainingWidth=0;
   if(n.calculable&&n.spendingBudget>0){
     actualWidth=Math.min(100,Math.max(0,n.spent/n.spendingBudget*100));
@@ -420,6 +420,9 @@ function renderBudgetDashboard(){
   document.querySelector(".budget-overview").classList.toggle("without-daily",past);
   renderBudgetAllocation(n);
   const status=(level,label,message="")=>{
+    if(n.calculable&&n.spendingBudget>=0&&n.remaining<0){
+      level="danger";label="";message="自由に使える予算を超えています";
+    }
     setText("dashboardStatusLabel",label);setText("dashboardStatusMessage",message);
     $("dashboardStatus").className=`budget-status ${level}`;
   };
@@ -427,7 +430,8 @@ function renderBudgetDashboard(){
     setText("budgetHeroPrefix","未計算");$("budgetStateDot").className="budget-state-dot neutral";
     setText("dashboardRemaining","—");setText("dashboardDailyBudget","—");setText("dashboardDailyDays","");
     setText("spendingBudget","未計算");setText("plannedSavings","未計算");setText("extraIncome","未計算");
-    status("neutral","未計算",past?"この月は予算計算に必要な情報が未設定です。":!n.settings?"家計ルールを入力してください。":"収入を入力してください。");
+    const missingIncome=!n.rec?.income?.entered,missingRule=!n.settings;
+    status("neutral","",missingIncome&&missingRule?"収入と家計ルールを入力してください。":missingRule?"家計ルールを入力してください。":"収入を入力してください。");
     return;
   }
   const shortage=n.spendingBudget<0,over=n.remaining<0;

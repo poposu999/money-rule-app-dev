@@ -266,7 +266,7 @@ input[type="date"]::-webkit-datetime-edit-fields-wrapper{
 .budget-dashboard .budget-daily-guide strong{font-size:clamp(16px,4.3vw,24px);color:var(--budget-text);text-align:center;max-width:100%;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
 .budget-dashboard .budget-daily-guide small{font-size:10px;text-align:center}
 .budget-allocation{position:relative;display:flex;gap:0;width:100%;height:18px;overflow:hidden;border-radius:999px;outline:1px solid var(--budget-outline);outline-offset:-1px;background:transparent}
-.budget-empty-label{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;line-height:1;color:var(--budget-muted);pointer-events:none}
+.budget-empty-label{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding-top:4px;font-size:10px;line-height:1;color:var(--budget-muted);pointer-events:none}
 .budget-empty-label[hidden]{display:none}
 .budget-segment{display:block;flex:none;height:100%;width:0;min-width:0}
 .budget-actual{background:var(--budget-actual)}.budget-planned{background:var(--budget-planned)}.budget-remaining{background:var(--budget-remaining)}
