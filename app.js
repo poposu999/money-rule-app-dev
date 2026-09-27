@@ -396,6 +396,7 @@ function renderMonthGrid(year){
 // Display-only allocation: the underlying budget and saved values are unchanged.
 function renderBudgetAllocation(n){
   const planned=n.plannedAmount+n.unpaidFixedAmount;
+  $("budgetEmptyLabel").hidden=!(n.calculable&&n.spendingBudget<=0);
   let actualWidth=0,plannedWidth=0,remainingWidth=0;
   if(n.calculable&&n.spendingBudget>0){
     actualWidth=Math.min(100,Math.max(0,n.spent/n.spendingBudget*100));
@@ -436,7 +437,7 @@ function renderBudgetDashboard(){
   setText("dashboardRemaining",yen(over?-n.remaining:n.remaining));
   const overMessage="自由に使える予算を超えています";
   if(shortage){
-    status("warning","予算不足","貯金予定額が収入を上回っています");
+    status("warning","","貯金予定額が収入を上回っています");
     if(past)return;
   }
   if(past){status(over?"danger":"good",over?"予算超過":"予算内",over?overMessage:"");return;}

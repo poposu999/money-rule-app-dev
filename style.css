@@ -251,10 +251,10 @@ input[type="date"]::-webkit-datetime-edit-fields-wrapper{
 .table-actions .fixed-status-label:disabled{opacity:1;cursor:default}
 
 /* Issue #1: compact budget card; theme tokens are scoped to this card. */
-.budget-dashboard{--budget-actual:#343a43;--budget-planned:#888e97;--budget-remaining:#d9dde2;--budget-outline:#cfd4da;--budget-text:#202124;--budget-muted:#68717b;--budget-good:#18794e;--budget-danger:#b42318;--budget-warning:#8a5a00;text-align:left}
-.budget-dashboard .budget-dashboard-title{margin-bottom:12px}
-.budget-dashboard .budget-dashboard-title h2{color:var(--budget-text)}
-.budget-overview{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:12px;align-items:center;margin-bottom:14px}
+.budget-dashboard{--budget-actual:#343a43;--budget-planned:#888e97;--budget-remaining:#d9dde2;--budget-outline:#cfd4da;--budget-text:#202124;--budget-muted:#68717b;--budget-good:#18794e;--budget-danger:#b42318;--budget-warning:#e6c36a;text-align:left}
+.budget-dashboard .budget-dashboard-title{margin-bottom:10px}
+.budget-dashboard .budget-dashboard-title h2{color:var(--budget-text);font-size:18px}
+.budget-overview{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:12px;align-items:center;margin-bottom:12px}
 .budget-overview.without-daily{grid-template-columns:minmax(0,1fr)}
 .budget-dashboard .budget-hero{display:flex;flex-direction:column;align-items:flex-start;gap:7px;padding:0;min-width:0;text-align:left}
 .budget-dashboard .budget-hero-prefix{display:flex;align-items:center;gap:6px;color:var(--budget-text);font-size:13px}
@@ -265,17 +265,21 @@ input[type="date"]::-webkit-datetime-edit-fields-wrapper{
 .budget-dashboard .budget-daily-guide>span{font-size:11px}
 .budget-dashboard .budget-daily-guide strong{font-size:clamp(16px,4.3vw,24px);color:var(--budget-text);text-align:center;max-width:100%;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
 .budget-dashboard .budget-daily-guide small{font-size:10px;text-align:center}
-.budget-allocation{display:flex;gap:0;width:100%;height:18px;overflow:hidden;border-radius:999px;outline:1px solid var(--budget-outline);outline-offset:-1px;background:transparent}
+.budget-allocation{position:relative;display:flex;gap:0;width:100%;height:18px;overflow:hidden;border-radius:999px;outline:1px solid var(--budget-outline);outline-offset:-1px;background:transparent}
+.budget-empty-label{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;line-height:1;color:var(--budget-muted);pointer-events:none}
+.budget-empty-label[hidden]{display:none}
 .budget-segment{display:block;flex:none;height:100%;width:0;min-width:0}
 .budget-actual{background:var(--budget-actual)}.budget-planned{background:var(--budget-planned)}.budget-remaining{background:var(--budget-remaining)}
-.budget-breakdown{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
+.budget-breakdown{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:8px}
 .budget-breakdown>div{min-width:0}
 .budget-breakdown>div>span{display:flex;align-items:center;gap:4px;color:var(--budget-muted);font-size:11px;white-space:nowrap}
 .budget-breakdown strong{display:block;font-size:clamp(14px,4vw,21px);line-height:1.4;margin-top:2px;color:var(--budget-text);overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
-.budget-dashboard .budget-status{display:flex;flex-wrap:wrap;gap:2px 6px;margin-top:12px;padding:6px 8px;line-height:1.35;border-radius:8px}
+.budget-dashboard .budget-status{display:flex;flex-wrap:wrap;gap:2px 6px;margin-top:10px;padding:6px 8px;line-height:1.35;border-radius:8px}
 .budget-dashboard .budget-status strong{font-size:11px;white-space:normal;overflow-wrap:anywhere}
 .budget-dashboard .budget-status span{font-size:10px;line-height:1.35;overflow-wrap:anywhere}
 .budget-dashboard .budget-status span:empty{display:none}
+.budget-dashboard .budget-status strong:empty{display:none}
+.budget-dashboard .budget-status:has(strong:empty){min-height:calc(11px * 1.35 + 12px);justify-content:flex-start;text-align:left}
 .budget-dashboard #v50-budget-warning{display:block;width:100%;margin-top:8px;text-align:left;white-space:normal;overflow-wrap:anywhere}
 .budget-dashboard #v50-budget-warning[hidden]{display:none}
 @media(prefers-color-scheme:dark){
