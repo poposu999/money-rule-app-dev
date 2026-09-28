@@ -38,12 +38,53 @@
 - 次に行う作業
 - 必要なら重点確認事項
 
+また、役割取り違えを防ぐため、引き継ぎ文の冒頭には原則として以下を明記する。
+
+- 送信元
+- 宛先
+- 対象Issue / PR
+
 例：
 
 ```text
+【送信元】
+③ Chat｜コードレビュー
+
+【宛先】
+① Chat｜統括・仕様管理
+
+【対象】
+Issue #3 / PR #4
+
 Issue #3 / PR #4 の最新状態をGitHubから確認して、
 ③コードレビュー担当として独立レビューしてください。
 対象head SHA：xxxxxxxx
+```
+
+②から①へ返す場合：
+
+```text
+【送信元】
+② Work｜実装担当
+
+【宛先】
+① Chat｜統括・仕様管理
+
+【対象】
+Issue #○ / PR #○
+```
+
+④から①へ返す場合：
+
+```text
+【送信元】
+④ Chat｜QA・品質管理
+
+【宛先】
+① Chat｜統括・仕様管理
+
+【対象】
+Issue #○ / PR #○
 ```
 
 詳細仕様やdiffを長文でユーザーにコピペさせず、各担当がGitHubから直接取得する。
@@ -260,6 +301,15 @@ GitHubに存在する情報は、各担当が自分で取りに行く。
 ### ②Workへ
 
 ```text
+【送信元】
+① Chat｜統括・仕様管理
+
+【宛先】
+② Work｜実装担当
+
+【対象】
+Issue #○
+
 Issue #○ と AI_WORKFLOW.md をGitHubから確認して、
 ②Work担当として実装してください。
 GO②です。
@@ -268,6 +318,15 @@ GO②です。
 ### ③コードレビューへ
 
 ```text
+【送信元】
+① Chat｜統括・仕様管理
+
+【宛先】
+③ Chat｜コードレビュー
+
+【対象】
+Issue #○ / PR #○
+
 Issue #○ / PR #○ と AI_WORKFLOW.md をGitHubから確認して、
 ③コードレビュー担当として独立レビューしてください。
 対象head SHA：xxxxxxxx
@@ -276,6 +335,15 @@ Issue #○ / PR #○ と AI_WORKFLOW.md をGitHubから確認して、
 ### ④QAへ
 
 ```text
+【送信元】
+① Chat｜統括・仕様管理
+
+【宛先】
+④ Chat｜QA・品質管理
+
+【対象】
+Issue #○ / PR #○
+
 Issue #○ / PR #○ と AI_WORKFLOW.md をGitHubから確認して、
 ④QA担当として独立QAしてください。
 対象head SHA：xxxxxxxx
