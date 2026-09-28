@@ -1,4 +1,4 @@
-const VERSION="50.1";
+const VERSION="50.2";
 const SCHEMA_VERSION=50;
 const PROD_STORAGE_KEYS={state:"moneyRuleAppV2",sections:"moneyRuleSectionPrefs",stats:"moneyRuleStatPrefs"};
 const LEGACY_STORAGE_KEYS={state:"moneyRuleDevAppV2",sections:"moneyRuleDevSectionPrefs",stats:"moneyRuleDevStatPrefs"};
@@ -893,6 +893,7 @@ function closeAppMenu(){
 function showAppPage(page){
   if(!["home","annual","rules","data"].includes(page))return;
   activePage=page;
+  BackupReminder.render();
   if(page==="annual")renderAnnualReport();
   if(page==="rules")renderRulesPage();
   closeAppMenu();

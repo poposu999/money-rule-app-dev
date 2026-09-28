@@ -285,3 +285,25 @@ input[type="date"]::-webkit-datetime-edit-fields-wrapper{
 @media(prefers-color-scheme:dark){
   .budget-dashboard{--budget-actual:#565f6c;--budget-planned:#929aa5;--budget-remaining:#cbd1d9;--budget-outline:#707986;--budget-text:#eef1f4;--budget-muted:#aab2bc;--budget-good:#85d8a7;--budget-danger:#f0a0a5;--budget-warning:#e6c36a}
 }
+
+
+/* Issue #3: device backup reminder, scoped to the new controls. */
+.backup-reminder-banner{margin:0 0 14px;padding:14px;border:1px solid #ead39a;border-radius:12px;background:#fff7e6;color:#624e16}
+.backup-reminder-banner p{margin:0 0 12px;font-size:13px;line-height:1.6;overflow-wrap:anywhere}
+.backup-reminder-actions{display:flex;flex-wrap:wrap;gap:8px}
+.backup-reminder-actions button{min-height:44px;font-size:13px;flex:1 1 125px}
+.backup-reminder-settings{margin-top:18px;padding-top:16px;border-top:1px solid #e2e5e9}
+.backup-reminder-settings .backup-reminder-toggle{flex-direction:row;align-items:center;justify-content:space-between;min-height:44px}
+.backup-reminder-toggle input{appearance:none;-webkit-appearance:none;position:relative;width:46px;min-width:46px;height:28px;padding:0;border-radius:16px;border:1px solid #818b97;background:#818b97;cursor:pointer}
+.backup-reminder-toggle input::before{content:'';position:absolute;left:3px;top:3px;width:20px;height:20px;border-radius:50%;background:#fff}
+.backup-reminder-toggle input:checked{background:#343a43;border-color:#343a43}
+.backup-reminder-toggle input:checked::before{left:21px}
+.backup-reminder-settings select:disabled{opacity:.55;cursor:not-allowed}
+#lastBackupAt{font-size:13px;line-height:1.6;overflow-wrap:anywhere;margin-bottom:0}
+@media(prefers-color-scheme:dark){
+  .backup-reminder-banner{background:#302b20;border-color:#73613a;color:#ead399}
+  .backup-reminder-settings{border-color:#414852}
+  .backup-reminder-settings label{color:#e8ebef}
+  .backup-reminder-toggle input:checked{background:#b8c0ca;border-color:#b8c0ca}
+  .backup-reminder-toggle input:checked::before{background:#20252b}
+}

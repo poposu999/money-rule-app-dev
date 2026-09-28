@@ -41,9 +41,31 @@ handleBackupObject=async data=>v50Locked(async()=>{
   if(!state){const raw={};for(const k of ['moneyRuleDevAppV49','moneyRuleDevAppV2','moneyRuleDevV50:head','moneyRuleDevV50:a','moneyRuleDevV50:b']){const value=localStorage.getItem(k);if(value!==null)raw[k]=value;}if(Object.keys(raw).length&&!await v50RequireBackup({format:'money-rule-original',localStorage:raw},'復旧前の元データ保存'))return;}
   if(!await v50Dialog('バックアップを復元',`<p>現在の検証データを置き換えます。</p><p>実支出 ${candidate.expenses.length}件／予定支出 ${candidate.plannedExpenses.length}件／固定費 ${candidate.fixedExpenses.length}件</p><p>実支出の期間：${escapeHtml(months[0]||'なし')}〜${escapeHtml(months.at(-1)||'なし')}</p><p>要確認：${issues.length}件。異常なリンクは自動修復しません。</p>`,[['restore','この内容で復元'],['cancel','キャンセル']]))return;
   // Switching generations preserves the current data until verified write succeeds.
-  v50Accept(candidate,{repair:true});$('migrationModal').classList.add('hidden');v50CloseEditor();selectedMonth=currentMonthKey();loadMonthForms();renderAll();v50ShowIssues();setText('migrationStateStatus','新形式：復元済み');
+  v50Accept(candidate,{repair:true});
+  await BackupReminder.update({lastBackupAt:BackupReminder.timestamp(data?.exportedAt,Date.now())});
+  $('migrationModal').classList.add('hidden');v50CloseEditor();selectedMonth=currentMonthKey();loadMonthForms();renderAll();v50ShowIssues();setText('migrationStateStatus','新形式：復元済み');
 });
-exportCurrentBackup=()=>{if(!state)return v50ExportRaw();downloadJson(v50BackupObject(),`money-rule-dev-v50-${getToday()}.json`);setText('backupStatus','バックアップのダウンロードを開始しました。ファイルの保存先をご確認ください。');};
+let backupExportPending=false;
+exportCurrentBackup=async()=>{
+  if(backupExportPending)return;
+  backupExportPending=true;
+  try{
+    let data;
+    try{
+      if(!state)return v50ExportRaw();
+      data=v50BackupObject();
+      downloadJson(data,`money-rule-dev-v50-${getToday()}.json`);
+    }catch{
+      await v50Dialog('バックアップの作成に失敗しました','<p>バックアップファイルの作成に失敗しました。データは変更されていません。もう一度お試しください。</p>',[['cancel','閉じる']]);
+      return;
+    }
+    setText('backupStatus','バックアップのダウンロードを開始しました。ファイルの保存先をご確認ください。');
+    const answer=await v50Dialog('バックアップファイルを保存できましたか？','<p>ファイルアプリなどで保存されていることを確認してください。</p>',[['saved','保存できました'],['cancel','まだ保存していません']]);
+    if(answer?.choice==='saved'){
+      if(await BackupReminder.update({lastBackupAt:data.exportedAt}))setText('backupStatus','バックアップの保存確認を記録しました。');
+    }
+  }finally{backupExportPending=false;}
+};
 function v50ExportRaw(){const local={};for(const k of ['moneyRuleDevAppV49','moneyRuleDevAppV2',STORAGE_KEYS.sections,STORAGE_KEYS.stats]){const v=localStorage.getItem(k);if(v!==null)local[k]=v;}const head=localStorage.getItem('moneyRuleDevV50:head');if(head!==null){local['moneyRuleDevV50:head']=head;for(const x of ['a','b'])local['moneyRuleDevV50:'+x]=localStorage.getItem('moneyRuleDevV50:'+x);}downloadJson({format:'money-rule-dev-backup',localStorage:local},`money-rule-original-${getToday()}.json`);}
 async function v50Migration(rawText,is49){
   const rawBackup={format:'money-rule-dev-backup',schemaVersion:is49?49:48,environment:'development',localStorage:{[is49?'moneyRuleDevAppV49':'moneyRuleDevAppV2']:rawText}};
@@ -55,6 +77,7 @@ function v50Start(){selectedMonth=currentMonthKey();loadMonthForms();resetEntryT
 function v50Boot(){
   buildCategoryControls();buildDueSelect('fixedDue');buildDueSelect('fixedEditDue');bindEvents();
   // Legacy entry points are bound to schema-50 handlers below, never legacy migration.
+  BackupReminder.init();
   $('migrationBackup').onclick=v50ExportRaw;$('exportBackup').onclick=exportCurrentBackup;$('migrationRestore').onclick=()=>$('importBackup').click();
   try{
     const current=v50Store.load();if(current){state=current;v50Committed=M.copy(current);v50Issues=M.check(state);v50Start();setText('migrationStateStatus','新形式：利用中');return;}
@@ -72,7 +95,7 @@ ensureMonthRecord=(key)=>state?.months[key]||createMonthRecord(effectiveRule(sta
 save=()=>{try{const candidate=M.copy(state);state=M.copy(v50Committed);v50Accept(candidate);}catch(e){state=M.copy(v50Committed);throw e;}};
 collectIntegrityIssues=s=>M.check(s).map(i=>`${i.type}：${i.refs.map(r=>r.id).join('・')} ${i.months.join('・')}`);
 runIntegrityCheck=()=>{v50Issues=M.check(state);v50ShowIssues();};
-renderAll=()=>{if(!state)return;v50OldRender();v50RenderWarning();};
+renderAll=()=>{if(!state)return;v50OldRender();v50RenderWarning();BackupReminder.render();};
 annualDetailMonths=report=>annualSearchActive()?report.months.map(m=>{const items=m.items.filter(e=>(!annualSearch.memo||String(e.memo||'').includes(annualSearch.memo))&&(!annualSearch.category||e.category===annualSearch.category));return {...m,items,total:items.reduce((a,e)=>a+e.amount,0)};}).filter(m=>m.items.length):report.months;
 function v50StateLabel(text){return `<span class="fixed-status-label v50-state-label">${escapeHtml(text)}</span>`;}
 renderPlannedExpenses=()=>{
