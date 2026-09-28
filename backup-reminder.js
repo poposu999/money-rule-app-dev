@@ -1,9 +1,9 @@
 /* Device-only reminder metadata. Never part of the household state or backup. */
 'use strict';
 const BackupReminder=(()=>{
-  const key='moneyRuleDevBackupReminder',intervals=[7,30,90];
+  const key=DEVICE_STORAGE_KEYS.backupReminder,intervals=[7,30,90];
   let midnightTimer;
-  function timestamp(value,now=Infinity){
+  function timestamp(value,now=Date.now()){
     if(typeof value!=='string'||!value.trim())return null;
     const time=Date.parse(value);
     return Number.isFinite(time)&&time<=now?new Date(time).toISOString():null;
