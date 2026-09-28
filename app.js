@@ -1,5 +1,8 @@
-const VERSION="50.1";
+const VERSION="50.2";
 const SCHEMA_VERSION=50;
+// Device settings are environment-specific, separate from household backup keys.
+// Production uses moneyRuleBackupReminder; this development build uses its own key.
+const DEVICE_STORAGE_KEYS=Object.freeze({backupReminder:"moneyRuleDevBackupReminder"});
 const PROD_STORAGE_KEYS={state:"moneyRuleAppV2",sections:"moneyRuleSectionPrefs",stats:"moneyRuleStatPrefs"};
 const LEGACY_STORAGE_KEYS={state:"moneyRuleDevAppV2",sections:"moneyRuleDevSectionPrefs",stats:"moneyRuleDevStatPrefs"};
 const STORAGE_KEYS={state:"moneyRuleDevAppV49",sections:"moneyRuleDevSectionPrefs",stats:"moneyRuleDevStatPrefs",initialized:"moneyRuleDevInitialized",migrated:"moneyRuleDevV49Migrated"};
@@ -893,6 +896,7 @@ function closeAppMenu(){
 function showAppPage(page){
   if(!["home","annual","rules","data"].includes(page))return;
   activePage=page;
+  BackupReminder.render();
   if(page==="annual")renderAnnualReport();
   if(page==="rules")renderRulesPage();
   closeAppMenu();

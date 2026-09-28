@@ -8,13 +8,13 @@
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)"/>
 <meta name="theme-color" content="#111418" media="(prefers-color-scheme: dark)"/>
 <link rel="manifest" href="manifest.json"/>
-<link href="style.css?v=50.1" rel="stylesheet"/>
-<link href="workflow.css?v=50.1" rel="stylesheet"/>
+<link href="style.css?v=50.2" rel="stylesheet"/>
+<link href="workflow.css?v=50.2" rel="stylesheet"/>
 </head>
 <body>
 <div class="dev-environment-banner" role="status">検証環境</div>
 <main class="container" id="appRoot">
-  <header class="app-header"><h1>家計簿 <span class="header-version">ver.50.1</span></h1><button id="openAppMenu" class="secondary-btn menu-toggle" type="button" aria-label="メニューを開く" aria-expanded="false" aria-controls="appMenu">☰</button></header>
+  <header class="app-header"><h1>家計簿 <span class="header-version">ver.50.2</span></h1><button id="openAppMenu" class="secondary-btn menu-toggle" type="button" aria-label="メニューを開く" aria-expanded="false" aria-controls="appMenu">☰</button></header>
   <div id="appMenuOverlay" class="menu-overlay hidden">
     <nav id="appMenu" class="app-menu" aria-label="メインメニュー">
       <div class="modal-header"><h2>メニュー</h2><button id="closeAppMenu" class="close-btn" type="button" aria-label="メニューを閉じる">×</button></div>
@@ -35,6 +35,10 @@
     <button id="returnCurrentMonth" class="secondary-btn return-current hidden" type="button">今月へ戻る</button>
     <div id="monthContextWarning" class="month-context-warning hidden"></div>
   </section>
+  <aside id="backupReminderBanner" class="backup-reminder-banner hidden" aria-label="バックアップのお知らせ">
+    <p id="backupReminderMessage"></p>
+    <div class="backup-reminder-actions"><button id="reminderExportBackup" type="button">バックアップする</button><button id="dismissBackupReminder" class="secondary-btn" type="button">今日は閉じる</button></div>
+  </aside>
   <section class="card budget-dashboard" data-section-content="progress">
     <div class="section-title budget-dashboard-title"><h2 id="budgetTitle">今月の予算状況</h2><button class="minus-btn" data-section="progress">−</button></div>
     <div class="budget-overview">
@@ -153,6 +157,11 @@
     <p class="muted">検証環境のデータだけを書き出し・復元します。本番データには触れません。</p>
     <div class="backup-actions"><button id="exportBackup" type="button">バックアップを書き出す</button><button class="secondary-btn" id="importBackupButton" type="button">バックアップを読み込む</button><input accept="application/json,.json" hidden id="importBackup" type="file"/></div>
     <p class="entry-hint" id="backupStatus"></p>
+    <div class="backup-reminder-settings">
+      <label class="backup-reminder-toggle" for="backupReminderEnabled"><span>バックアップ通知</span><input id="backupReminderEnabled" type="checkbox" role="switch"/></label>
+      <label for="backupReminderInterval">通知間隔<select id="backupReminderInterval" disabled><option value="7">7日</option><option value="30" selected>30日</option><option value="90">90日</option></select></label>
+      <p id="lastBackupAt">最終バックアップ：記録なし</p>
+    </div>
   </section></div>
 
   <div id="recordSheet" class="modal record-sheet hidden" role="dialog" aria-modal="true" aria-labelledby="entryTitle">  <section class="modal-box entry-section record-sheet-box">
@@ -310,11 +319,12 @@
 
   <div id="memoPopup" class="memo-popup hidden" role="status"></div>
   <button id="recordButton" class="record-fab" type="button" data-open-record="expense">＋ 記録</button>
-  <footer class="app-footer"><h1>家計簿 <span class="app-version">ver.50.1</span></h1><p>ホーム予算表示の改善・検証版</p></footer>
+  <footer class="app-footer"><h1>家計簿 <span class="app-version">ver.50.2</span></h1><p>バックアップ通知・検証版</p></footer>
 </main>
-<script src="model.js?v=50.1"></script>
-<script src="app.js?v=50.1"></script>
-<script src="workflow.js?v=50.1"></script>
+<script src="model.js?v=50.2"></script>
+<script src="app.js?v=50.2"></script>
+<script src="backup-reminder.js?v=50.2"></script>
+<script src="workflow.js?v=50.2"></script>
 <script>
 if ("serviceWorker" in navigator) {
   let reloading = false;
